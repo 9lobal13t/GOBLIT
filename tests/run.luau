@@ -1,0 +1,14 @@
+-- Запуск всех тестов: `lune run tests/run`
+-- Тестируется чистая логика и данные (src/shared/Logic, src/shared/Definitions, Config):
+-- они не используют Roblox API. Код, работающий с экземплярами Roblox, проверяется
+-- анализатором типов и вручную в Studio (см. docs/TESTING.md).
+
+local process = require("@lune/process")
+local Test = require("./lib/Test")
+
+require("./Rng.spec")
+require("./ProfileSchema.spec")
+require("./Definitions.spec")
+
+local _, failed = Test.run()
+process.exit(if failed > 0 then 1 else 0)

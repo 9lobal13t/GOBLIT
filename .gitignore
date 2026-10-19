@@ -14,3 +14,6 @@ sourcemap.json
 .idea/
 .DS_Store
 Thumbs.db
+
+# Кеш инструментов (определения Roblox API для luau-lsp)
+.cache/

@@ -5,6 +5,9 @@
 local Constants = table.freeze({
 	HubZone = "hub",
 
+	-- Настройка профиля реплицируется своему игроку как атрибут "<префикс><ключ>".
+	SettingAttrPrefix = "Setting_",
+
 	Folders = table.freeze({
 		Net = "GoblitNet",
 		World = "World",

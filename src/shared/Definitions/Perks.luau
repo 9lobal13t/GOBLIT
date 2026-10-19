@@ -65,6 +65,14 @@ local NegativeStats = {
 	ChestAmbushChance = true,
 }
 
+local function add(stat: string, value: number): Modifier
+	return { stat = stat, op = "add", value = value }
+end
+
+local function mul(stat: string, value: number): Modifier
+	return { stat = stat, op = "mul", value = value }
+end
+
 type PerkInput = {
 	id: string,
 	name: string,
@@ -108,7 +116,7 @@ local list: { PerkDef } = {
 		category = "Offensive",
 		tags = { "melee" },
 		maxStacks = 3,
-		modifiers = { { stat = "AttackPower", op = "mul", value = 1.12 } },
+		modifiers = { mul("AttackPower", 1.12) },
 	}),
 	perk({
 		id = "toughened_hide",
@@ -117,7 +125,7 @@ local list: { PerkDef } = {
 		rarity = "Common",
 		category = "Defensive",
 		maxStacks = 3,
-		modifiers = { { stat = "MaxHealth", op = "add", value = 20 } },
+		modifiers = { add("MaxHealth", 20) },
 	}),
 	perk({
 		id = "fleet_foot",
@@ -128,8 +136,8 @@ local list: { PerkDef } = {
 		tags = { "dodge" },
 		maxStacks = 2,
 		modifiers = {
-			{ stat = "MoveSpeed", op = "mul", value = 1.08 },
-			{ stat = "DodgeCooldown", op = "mul", value = 0.85 },
+			mul("MoveSpeed", 1.08),
+			mul("DodgeCooldown", 0.85),
 		},
 	}),
 	perk({
@@ -140,7 +148,7 @@ local list: { PerkDef } = {
 		category = "Critical",
 		tags = { "crit" },
 		maxStacks = 3,
-		modifiers = { { stat = "CritChance", op = "add", value = 0.08 } },
+		modifiers = { add("CritChance", 0.08) },
 	}),
 	perk({
 		id = "brutal_crits",
@@ -150,7 +158,7 @@ local list: { PerkDef } = {
 		category = "Critical",
 		tags = { "crit" },
 		maxStacks = 2,
-		modifiers = { { stat = "CritDamage", op = "add", value = 0.5 } },
+		modifiers = { add("CritDamage", 0.5) },
 	}),
 	perk({
 		id = "swift_strikes",
@@ -160,7 +168,7 @@ local list: { PerkDef } = {
 		category = "Offensive",
 		tags = { "melee", "speed" },
 		maxStacks = 3,
-		modifiers = { { stat = "AttackSpeed", op = "mul", value = 1.12 } },
+		modifiers = { mul("AttackSpeed", 1.12) },
 	}),
 	perk({
 		id = "iron_skin",
@@ -169,7 +177,7 @@ local list: { PerkDef } = {
 		rarity = "Uncommon",
 		category = "Defensive",
 		maxStacks = 3,
-		modifiers = { { stat = "Armor", op = "add", value = 4 } },
+		modifiers = { add("Armor", 4) },
 	}),
 	perk({
 		id = "bloodthirst",
@@ -179,7 +187,7 @@ local list: { PerkDef } = {
 		category = "Offensive",
 		tags = { "sustain" },
 		maxStacks = 2,
-		modifiers = { { stat = "LifeOnKill", op = "add", value = 0.04 } },
+		modifiers = { add("LifeOnKill", 0.04) },
 	}),
 	perk({
 		id = "glass_cannon",
@@ -190,8 +198,8 @@ local list: { PerkDef } = {
 		category = "Risk",
 		tags = { "risk" },
 		modifiers = {
-			{ stat = "AttackPower", op = "mul", value = 1.35 },
-			{ stat = "MaxHealth", op = "mul", value = 0.75 },
+			mul("AttackPower", 1.35),
+			mul("MaxHealth", 0.75),
 		},
 	}),
 	perk({
@@ -233,8 +241,8 @@ local list: { PerkDef } = {
 		category = "Economy",
 		tags = { "greed", "risk" },
 		modifiers = {
-			{ stat = "GoldFind", op = "add", value = 0.35 },
-			{ stat = "ChestAmbushChance", op = "add", value = 0.25 },
+			add("GoldFind", 0.35),
+			add("ChestAmbushChance", 0.25),
 		},
 	}),
 }

@@ -13,8 +13,10 @@ export type Obstacle = {
 	size: { x: number, y: number, z: number },
 }
 
+export type FeatureKind = "chest" | "altar" | "fountain" | "portal" | "campfire"
+
 export type Feature = {
-	kind: "chest" | "altar" | "fountain" | "portal" | "campfire",
+	kind: FeatureKind,
 	pos: Vec2,
 }
 
@@ -58,11 +60,17 @@ local function lowwall(x: number, z: number, sx: number, sz: number): Obstacle
 	return { kind = "lowwall", pos = v(x, z), size = { x = sx, y = 4, z = sz } }
 end
 
+local function feature(kind: FeatureKind, x: number, z: number): Feature
+	return { kind = kind, pos = v(x, z) }
+end
+
 local function rubble(x: number, z: number, s: number, h: number): Obstacle
 	return { kind = "rubble", pos = v(x, z), size = { x = s, y = h, z = s } }
 end
 
 local ALL_SIDES: { Side } = { "N", "E", "S", "W" }
+local NORTH_SOUTH: { Side } = { "N", "S" }
+local EAST_WEST: { Side } = { "E", "W" }
 local CORNER_BRAZIERS = { v(-26, -26), v(26, -26), v(-26, 26), v(26, 26) }
 local RING_SPAWNS = {
 	v(0, 0),
@@ -140,7 +148,7 @@ local Templates: { RoomTemplate } = {
 		id = "start_camp",
 		category = "Start",
 		displayName = "Лагерь у входа",
-		features = { { kind = "campfire", pos = v(0, 0) } },
+		features = { feature("campfire", 0, 0) },
 		obstacles = { rubble(-20, 18, 4, 3), rubble(19, -20, 5, 2) },
 		playerSpawns = { v(8, 0), v(-8, 0), v(0, 8), v(0, -8), v(6, 6), v(-6, -6) },
 		spawnPoints = {},
@@ -175,6 +183,18 @@ local Templates: { RoomTemplate } = {
 			pillar(6.9, -16.6, 2.5, 10),
 			pillar(16.6, -6.9, 2.5, 10),
 		},
+		-- Кольцо колонн на радиусе 18: точки внутри кольца и в углах за ним.
+		spawnPoints = {
+			v(0, 0),
+			v(10, 0),
+			v(-10, 0),
+			v(0, 10),
+			v(0, -10),
+			v(24, 24),
+			v(-24, -24),
+			v(24, -24),
+			v(-24, 24),
+		},
 	}),
 	template({
 		id = "combat_split",
@@ -188,7 +208,7 @@ local Templates: { RoomTemplate } = {
 		id = "hall_ns",
 		category = "Combat",
 		displayName = "Длинная галерея",
-		sockets = { "N", "S" },
+		sockets = NORTH_SOUTH,
 		weight = 2,
 		obstacles = { lowwall(-16, 0, 2, 40), lowwall(16, 0, 2, 40), pillar(0, 0, 3, 18) },
 		spawnPoints = { v(-8, -20), v(8, -10), v(-8, 10), v(8, 20), v(6, 0), v(-6, 0) },
@@ -197,7 +217,7 @@ local Templates: { RoomTemplate } = {
 		id = "hall_ew",
 		category = "Combat",
 		displayName = "Поперечная галерея",
-		sockets = { "E", "W" },
+		sockets = EAST_WEST,
 		weight = 2,
 		obstacles = { lowwall(0, -16, 40, 2), lowwall(0, 16, 40, 2), pillar(0, 0, 3, 18) },
 		spawnPoints = { v(-20, -8), v(-10, 8), v(10, -8), v(20, 8), v(0, 6), v(0, -6) },
@@ -214,9 +234,9 @@ local Templates: { RoomTemplate } = {
 		category = "Treasure",
 		displayName = "Сокровищница",
 		features = {
-			{ kind = "chest", pos = v(0, 0) },
-			{ kind = "chest", pos = v(-14, -14) },
-			{ kind = "chest", pos = v(14, 14) },
+			feature("chest", 0, 0),
+			feature("chest", -14, -14),
+			feature("chest", 14, 14),
 		},
 		obstacles = { pillar(-14, 14, 3, 12), pillar(14, -14, 3, 12) },
 		spawnPoints = { v(-20, 4), v(20, -4), v(4, 20), v(-4, -20) },
@@ -225,7 +245,7 @@ local Templates: { RoomTemplate } = {
 		id = "altar_shrine",
 		category = "Altar",
 		displayName = "Кровавый алтарь",
-		features = { { kind = "altar", pos = v(0, 0) } },
+		features = { feature("altar", 0, 0) },
 		obstacles = { pillar(-12, -12, 2.5, 14), pillar(12, -12, 2.5, 14), pillar(-12, 12, 2.5, 14), pillar(12, 12, 2.5, 14) },
 		spawnPoints = {},
 	}),
@@ -233,7 +253,7 @@ local Templates: { RoomTemplate } = {
 		id = "rest_spring",
 		category = "Rest",
 		displayName = "Тихий источник",
-		features = { { kind = "fountain", pos = v(0, 0) } },
+		features = { feature("fountain", 0, 0) },
 		obstacles = { rubble(-18, 18, 4, 2), rubble(18, -18, 4, 2) },
 		spawnPoints = {},
 	}),
@@ -241,7 +261,7 @@ local Templates: { RoomTemplate } = {
 		id = "exit_portal",
 		category = "Exit",
 		displayName = "Зал эвакуации",
-		features = { { kind = "portal", pos = v(0, 0) } },
+		features = { feature("portal", 0, 0) },
 		obstacles = { pillar(-18, -18, 4, 18), pillar(18, 18, 4, 18) },
 		spawnPoints = { v(0, 14), v(-14, 0), v(14, 0), v(0, -14), v(-20, 20), v(20, -20) },
 	}),
@@ -249,7 +269,7 @@ local Templates: { RoomTemplate } = {
 		id = "secret_cache",
 		category = "Secret",
 		displayName = "Тайник",
-		features = { { kind = "chest", pos = v(0, 0) } },
+		features = { feature("chest", 0, 0) },
 		obstacles = { rubble(-12, 10, 3, 2), rubble(12, -10, 3, 2) },
 		spawnPoints = {},
 	}),
