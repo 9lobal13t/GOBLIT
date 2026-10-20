@@ -59,3 +59,36 @@ luau-lsp нужно собирать компилятором clang: GCC пад�
 
 **PowerShell от администратора не нужен** (2026-10-20).
 Строка `PS C:\WINDOWS\system32>` означает окно администратора. Для установки и работы нужно обычное окно: `PS C:\Users\<имя>>`.
+
+## Найдено проверкой в Studio (2026-10-20)
+
+Подробности и замеры — в [reports/phase1-studio-check.md](reports/phase1-studio-check.md).
+
+**Текст ошибки DataStore в `pcall` не такой, как в Output.**
+В Output: `DataStoreService: StudioAccessToApisNotAllowed: Cannot write to DataStore from studio if API access is not enabled. …`
+В `pcall`: `403: Cannot write to DataStore from studio if API access is not enabled.` — кода `StudioAccessToApisNotAllowed` там нет.
+Распознавание вынесено в `Logic/DataStoreErrors.luau` (код `403:` и текст `API access is not enabled`) и проверено тестами на настоящих сообщениях. Раньше сохранение отключалось только через ~10 с повторных попыток.
+
+**Персонаж появляется раньше, чем построен мир.**
+При `CharacterAutoLoads = true` персонаж мог появиться до того, как сервер построил Заставу и `SpawnLocation`, — у маяка вместо площадки.
+Решение: `CharacterAutoLoads = false` (в `default.project.json` и в коде). `SpawnService` создаёт персонажа после постройки мира и пересоздаёт его после смерти. Уже появившегося до старта скриптов персонажа он тоже пересоздаёт.
+
+**`Player:LoadCharacter` устарел.** Нужно использовать `LoadCharacterAsync` (так сказано в определениях API).
+
+**Интерфейс, уменьшенный под маленький экран, нечитаем.**
+Автомасштаб до 0,7 давал на iPhone 7 текст в 9 точек и кнопки в 22 точки.
+Решение: при сенсорном вводе (`UserInputService.PreferredInput == Touch`) не уменьшать ниже макета, итоговый масштаб не ниже 0,8, все кнопки не ниже `Theme.TouchTarget` (44 точки). Длинный список в панели прокручивается.
+
+**Кнопка теряет фон после смены выбора.**
+Вероятная причина — встроенная подсветка `AutoButtonColor` спорит с цветом, который код меняет программно. У кнопок, цвет которых меняет код, `AutoButtonColor = false`. Невыбранные варианты получили заметный фон и рамку.
+
+**Кириллица в шрифте Builder Sans не подтверждена.**
+Интерфейс переведён на Montserrat через `Font.new("rbxasset://fonts/families/Montserrat.json", …)`. Montserrat с кириллицей проверен в прошлом проекте. В `Enum.Font` значения Montserrat нет.
+
+**Скриншоты Studio без 3D-сцены.**
+Когда окно Studio свёрнуто или не в фокусе, Studio не рисует 3D и на снимках виден только интерфейс. Перед проверкой внешнего вида окно Studio должно быть на переднем плане.
+
+**`rokit install` без интерактива падает на неподтверждённых инструментах.**
+Сначала нужно выполнить `rokit trust <автор/инструмент>`.
+
+**`simulate_keyboard_input` с `tap` и `duration` может вернуть ответ раньше, чем клавиша отпущена** (не перепроверено). После ответа персонаж продолжал идти.

@@ -60,7 +60,7 @@ PowerShell запускайте обычный, **не от администра
    ```powershell
    Invoke-RestMethod https://raw.githubusercontent.com/rojo-rbx/rokit/main/scripts/install.ps1 | Invoke-Expression
    ```
-2. В папке проекта: `rokit install` (поставит Rojo и инструменты из `rokit.toml`).
+2. В папке проекта: `rokit install` (поставит Rojo и инструменты из `rokit.toml`). Если запускает ИИ, а не человек, сначала нужно выполнить `rokit trust <автор/инструмент>` для каждого инструмента: без интерактива `rokit install` не может спросить подтверждение.
 3. `rojo plugin install` — плагин Rojo для Studio.
 4. Открыть место в Studio. Удобнее всего собрать его командой `rojo build -o GOBLIT.rbxlx` и открыть файл. Затем выполнить `rojo serve` и нажать в Studio **Rojo → Connect**.
 

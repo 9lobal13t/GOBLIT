@@ -20,6 +20,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local ProfileSchema = require(ReplicatedStorage.Shared.Logic.ProfileSchema)
+local DataStoreErrors = require(ReplicatedStorage.Shared.Logic.DataStoreErrors)
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 local ErrorReporter = require(ReplicatedStorage.Shared.Util.ErrorReporter)
 local NetServer = require(script.Parent.Parent.Net.NetServer)
@@ -95,12 +96,6 @@ local function isLockActive(lock: LockRecord?, myJobId: string): boolean
 	return lock ~= nil and lock.JobId ~= myJobId and os.time() - lock.Time < Config.Data.LockTtlSeconds
 end
 
--- Ошибки, после которых повторять бессмысленно: место не опубликовано или API закрыт в Studio.
-local function isPermanentStoreError(message: string): boolean
-	return string.find(message, "StudioAccessToApisNotAllowed", 1, true) ~= nil
-		or string.find(message, "publish this place", 1, true) ~= nil
-end
-
 local function disableStore(reason: string)
 	if store then
 		store = nil
@@ -166,7 +161,7 @@ local function loadProfile(player: Player): LoadResult
 		if not ok then
 			local message = tostring(err)
 			ErrorReporter.report("PlayerData.load", `UserId {player.UserId}, попытка {attempt}: {message}`)
-			if isPermanentStoreError(message) then
+			if DataStoreErrors.isPermanent(message) then
 				disableStore(message)
 				break
 			end
@@ -232,7 +227,7 @@ local function writeProfile(session: Session, release: boolean): boolean
 
 		local message = tostring(err)
 		ErrorReporter.report("PlayerData.save", `UserId {session.player.UserId}, попытка {attempt}: {message}`)
-		if isPermanentStoreError(message) then
+		if DataStoreErrors.isPermanent(message) then
 			disableStore(message)
 			break
 		end

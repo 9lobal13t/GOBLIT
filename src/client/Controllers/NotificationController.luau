@@ -1,6 +1,8 @@
 --!strict
 -- Всплывающие уведомления: с сервера (событие Notify) и от других контроллеров (push).
--- Не больше MAX_VISIBLE одновременно, новые вытесняют старые — экран не заваливается.
+-- Новые вытесняют старые, а сколько их помещается, зависит от высоты экрана: стопка
+-- начинается под валютами (TOP_OFFSET) и не заходит в нижнюю зону HUD (BOTTOM_RESERVED).
+-- На iPhone 7 это 2 уведомления, на ПК — до MAX_VISIBLE.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -12,6 +14,9 @@ local Ui = require(script.Parent.Parent.UI.Ui)
 local Scale = require(script.Parent.Parent.UI.Scale)
 
 local MAX_VISIBLE = 4
+local TOP_OFFSET = 88 -- под колонкой «зона + валюты» HudController (12 + 28 + 6 + 30 + отступ)
+local BOTTOM_RESERVED = 100 -- полоса здоровья и выносливости внизу
+local TOAST_SLOT = 64 -- высота уведомления в две строки с промежутком
 local MAX_TEXT_LENGTH = 240
 local FADE_SECONDS = 0.25
 
@@ -25,8 +30,18 @@ local KIND_COLORS: { [Remotes.NotifyKind]: Color3 } = {
 local NotificationController = {}
 
 local container: Frame? = nil
+local screen: ScreenGui? = nil
 local visible: { CanvasGroup } = {}
 local nextOrder = 0
+
+local function maxVisible(): number
+	local gui = screen
+	if not gui then
+		return 1
+	end
+	local free = Scale.virtualSize(gui).Y - TOP_OFFSET - BOTTOM_RESERVED
+	return math.clamp(math.floor(free / TOAST_SLOT), 1, MAX_VISIBLE)
+end
 
 local function lifetimeFor(text: string): number
 	return math.clamp(3 + #text / 40, 3, 7)
@@ -50,7 +65,7 @@ function NotificationController.push(text: string, kind: Remotes.NotifyKind)
 	end
 	local message = if #text > MAX_TEXT_LENGTH then string.sub(text, 1, MAX_TEXT_LENGTH) .. "…" else text
 
-	while #visible >= MAX_VISIBLE do
+	while #visible >= maxVisible() do
 		dismiss(visible[1])
 	end
 
@@ -114,11 +129,12 @@ function NotificationController.init()
 		Parent = Players.LocalPlayer:WaitForChild("PlayerGui"),
 	}) :: ScreenGui
 	Scale.attach(gui)
+	screen = gui
 
 	container = Ui.new("Frame", {
 		Name = "Stack",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 64),
+		Position = UDim2.new(0.5, 0, 0, TOP_OFFSET),
 		Size = UDim2.new(0, 380, 0, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,

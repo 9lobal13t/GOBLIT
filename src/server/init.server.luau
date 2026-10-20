@@ -22,6 +22,8 @@ local services: { { name: string, module: Service } } = {
 	{ name = "HeroService", module = require(script.Services.HeroService) :: any },
 	{ name = "SettingsService", module = require(script.Services.SettingsService) :: any },
 	{ name = "HubService", module = require(script.Services.HubService) :: any },
+	-- После HubService: персонажи появляются только когда Застава построена.
+	{ name = "SpawnService", module = require(script.Services.SpawnService) :: any },
 }
 
 local healthy = ErrorReporter.try("Bootstrap.NetServer", NetServer.init)

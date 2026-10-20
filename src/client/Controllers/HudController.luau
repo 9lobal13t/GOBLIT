@@ -261,7 +261,9 @@ local function buildSaveWarning(gui: ScreenGui)
 			FontFace = Theme.Fonts.Bold,
 			TextSize = Theme.TextSize.Small,
 			TextColor3 = Theme.Colors.Error,
-			Text = "Сохранение отключено — прогресс этой сессии не сохранится",
+			-- Коротко: длинная строка на телефоне налезала бы на соседние панели.
+			-- Подробности игрок получает уведомлением при входе.
+			Text = "Сохранение отключено",
 		}),
 	}) :: Frame
 

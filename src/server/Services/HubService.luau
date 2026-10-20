@@ -111,6 +111,11 @@ local function onBeaconTriggered(player: Player)
 	)
 end
 
+-- Построена ли Застава (с точкой появления). Используется SpawnService.
+function HubService.isBuilt(): boolean
+	return refs ~= nil
+end
+
 function HubService.init()
 	configureLighting()
 	local hubRefs = HubBuilder.build(WorldFolders.hub())

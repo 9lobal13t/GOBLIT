@@ -8,6 +8,7 @@ local Test = require("./lib/Test")
 
 require("./Rng.spec")
 require("./ProfileSchema.spec")
+require("./DataStoreErrors.spec")
 require("./Definitions.spec")
 
 local _, failed = Test.run()

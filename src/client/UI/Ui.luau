@@ -115,7 +115,7 @@ function Ui.formatInt(value: number): string
 	local text = tostring(math.floor(math.abs(value)))
 	local grouped = string.reverse((string.gsub(string.reverse(text), "(%d%d%d)", "%1 ")))
 	grouped = string.gsub(grouped, "^ ", "")
-	return if value < 0 then "−" .. grouped else grouped
+	return if value < 0 then "-" .. grouped else grouped
 end
 
 return table.freeze(Ui)
