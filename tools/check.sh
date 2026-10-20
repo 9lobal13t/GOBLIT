@@ -36,7 +36,21 @@ fi
 echo "ошибок и предупреждений нет"
 
 step "Имена свойств интерфейса"
-python3 tools/check_ui_props.py "$DEFS" $(grep -rl 'Ui\.\(new\|label\|button\)' src)
+# На Windows Python обычно называется python, а python3 бывает заглушкой Microsoft Store,
+# которая ничего не запускает. Поэтому берём первую команду, которая реально работает.
+PYTHON=""
+for candidate in python3 python; do
+	if command -v "$candidate" > /dev/null 2>&1 \
+		&& "$candidate" -c "import sys; sys.exit(0 if sys.version_info >= (3, 8) else 1)" > /dev/null 2>&1; then
+		PYTHON="$candidate"
+		break
+	fi
+done
+if [ -z "$PYTHON" ]; then
+	echo "нужен Python 3 (python3 или python)"
+	exit 1
+fi
+"$PYTHON" tools/check_ui_props.py "$DEFS" $(grep -rl 'Ui\.\(new\|label\|button\)' src)
 
 step "Линтер (selene)"
 if ! selene_output=$(selene src 2>&1); then

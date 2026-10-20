@@ -125,7 +125,7 @@ local function buildRow(parent: Instance, spec: SettingSpec, order: number)
 	local row = Ui.new("Frame", {
 		Name = spec.key,
 		LayoutOrder = order,
-		Size = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.fromScale(1, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 		Parent = parent,
@@ -134,7 +134,7 @@ local function buildRow(parent: Instance, spec: SettingSpec, order: number)
 		Ui.label({
 			Name = "Title",
 			LayoutOrder = 1,
-			Size = UDim2.new(1, 0, 0, 0),
+			Size = UDim2.fromScale(1, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
 			FontFace = Theme.Fonts.Bold,
 			TextWrapped = true,
@@ -143,7 +143,7 @@ local function buildRow(parent: Instance, spec: SettingSpec, order: number)
 		Ui.label({
 			Name = "Description",
 			LayoutOrder = 2,
-			Size = UDim2.new(1, 0, 0, 0),
+			Size = UDim2.fromScale(1, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
 			TextSize = Theme.TextSize.Small,
 			TextColor3 = Theme.Colors.TextDim,
@@ -252,7 +252,7 @@ local function buildPanel(gui: ScreenGui): Frame
 	local close = Ui.button({
 		Name = "Close",
 		AnchorPoint = Vector2.new(1, 0.5),
-		Position = UDim2.new(1, 0, 0.5, 0),
+		Position = UDim2.fromScale(1, 0.5),
 		Size = UDim2.fromOffset(Theme.TouchTarget, Theme.TouchTarget),
 		Text = "×",
 		TextSize = Theme.TextSize.Title,

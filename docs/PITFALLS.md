@@ -127,3 +127,12 @@ luau-lsp нужно собирать компилятором clang: GCC пад�
 
 **selene завершается с ошибкой даже на одних предупреждениях.**
 `tools/check.sh` остановится на selene, если есть хоть одно предупреждение. Предупреждения исправляются, а не подавляются.
+
+**На Windows Python называется `python`, а `python3` бывает заглушкой Microsoft Store.**
+`tools/check.sh` выбирает первую команду из `python3` и `python`, которая реально запускает Python 3.
+
+**На Windows Python по умолчанию читает файлы в cp1251.**
+Русские комментарии ломали проверку свойств интерфейса. В `tools/check_ui_props.py` кодировка UTF-8 указана явно.
+
+**selene `roblox_manual_fromscale_or_fromoffset`.**
+Если у `UDim2.new` нулевые оба отступа или оба коэффициента, пишем `UDim2.fromScale(...)` или `UDim2.fromOffset(...)`.

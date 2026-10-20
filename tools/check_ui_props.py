@@ -3,10 +3,11 @@
 Тип-чекер не видит эти свойства (они передаются таблицей Props = any), поэтому
 опечатка в имени свойства иначе обнаружилась бы только при запуске в Studio.
 Использование: python3 tools/check_ui_props.py <roblox.d.luau> <файлы...>
+Файлы читаются в UTF-8 явно: на Windows кодировка по умолчанию — cp1251.
 """
 import re, sys, pathlib
 
-defs = pathlib.Path(sys.argv[1]).read_text()
+defs = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
 members, parent = {}, {}
 current = None
 for line in defs.splitlines():
@@ -44,7 +45,7 @@ def props_at_depth1(src, start):
 
 problems = 0
 for path in sys.argv[2:]:
-    src = pathlib.Path(path).read_text()
+    src = pathlib.Path(path).read_text(encoding="utf-8")
     for m in re.finditer(r'Ui\.new\("(\w+)",\s*\{|Ui\.(label|button)\(\{', src):
         cls = m.group(1) or {"label": "TextLabel", "button": "TextButton"}[m.group(2)]
         if cls not in members:

@@ -73,7 +73,7 @@ function NotificationController.push(text: string, kind: Remotes.NotifyKind)
 	local toast = Ui.new("CanvasGroup", {
 		Name = "Toast",
 		LayoutOrder = nextOrder,
-		Size = UDim2.new(1, 0, 0, 0),
+		Size = UDim2.fromScale(1, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundColor3 = Theme.Colors.Panel,
 		BackgroundTransparency = Theme.PanelTransparency,
@@ -86,13 +86,13 @@ function NotificationController.push(text: string, kind: Remotes.NotifyKind)
 		Ui.new("Frame", {
 			Name = "Accent",
 			Size = UDim2.new(0, 3, 1, 0),
-			Position = UDim2.new(0, -8, 0, 0),
+			Position = UDim2.fromOffset(-8, 0),
 			BackgroundColor3 = KIND_COLORS[kind] or Theme.Colors.Info,
 			BorderSizePixel = 0,
 		}),
 		Ui.label({
 			Name = "Text",
-			Size = UDim2.new(1, 0, 0, 0),
+			Size = UDim2.fromScale(1, 0),
 			AutomaticSize = Enum.AutomaticSize.Y,
 			Text = message,
 			TextWrapped = true,
@@ -135,7 +135,7 @@ function NotificationController.init()
 		Name = "Stack",
 		AnchorPoint = Vector2.new(0.5, 0),
 		Position = UDim2.new(0.5, 0, 0, TOP_OFFSET),
-		Size = UDim2.new(0, 380, 0, 0),
+		Size = UDim2.fromOffset(380, 0),
 		AutomaticSize = Enum.AutomaticSize.Y,
 		BackgroundTransparency = 1,
 		Parent = gui,
