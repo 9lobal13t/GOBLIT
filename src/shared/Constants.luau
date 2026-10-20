@@ -47,6 +47,7 @@ local Constants = table.freeze({
 		Zone = "Zone",
 		DownedUntil = "DownedUntil",
 		AttackInterval = "AttackInterval",
+		AttackPower = "AttackPower",
 		DodgeCooldown = "DodgeCooldown",
 		RunGold = "RunGold",
 		RunShards = "RunShards",

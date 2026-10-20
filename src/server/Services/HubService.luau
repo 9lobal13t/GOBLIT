@@ -8,9 +8,15 @@ local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
 
 local HeroService = require(script.Parent.HeroService)
+local EnemyService = require(script.Parent.EnemyService)
 local NetServer = require(script.Parent.Parent.Net.NetServer)
 local HubBuilder = require(script.Parent.Parent.World.HubBuilder)
 local WorldFolders = require(script.Parent.Parent.World.WorldFolders)
+
+-- Манекен восстанавливается, когда по нему перестали бить: так видно и урон за подход,
+-- и в следующий раз можно начать с полного здоровья.
+local DUMMY_REGEN_DELAY = 4
+local DUMMY_REGEN_PER_SECOND = 60
 
 local BEACON_PLAYER_COOLDOWN = 1.5
 local BEACON_GLOBAL_COOLDOWN = 0.5
@@ -36,6 +42,8 @@ local EFFECT_PREFIX = "Goblit"
 local HubService = {}
 
 local refs: HubBuilder.HubRefs? = nil
+local dummy: EnemyService.Enemy? = nil
+local dummyLastHitAt = -math.huge
 local beaconLit = true
 local lastGlobalUse = -math.huge
 local lastPlayerUse: { [Player]: number } = {}
@@ -161,9 +169,32 @@ function HubService.init()
 	applyBeaconState(hubRefs.beacon)
 end
 
+-- Тренировочный манекен: цель, по которой можно проверить удары, не уходя в подземелье.
+local function spawnDummy(hubRefs: HubBuilder.HubRefs)
+	local ground = hubRefs.trainingGround
+	dummy = EnemyService.spawn("dummy", false, ground, ground.Y, WorldFolders.hub())
+
+	EnemyService.Damaged:Connect(function(enemy)
+		if enemy == dummy then
+			dummyLastHitAt = os.clock()
+		end
+	end)
+
+	task.spawn(function()
+		while true do
+			task.wait(1)
+			local target = dummy
+			if target and not target.dead and os.clock() - dummyLastHitAt >= DUMMY_REGEN_DELAY then
+				EnemyService.heal(target, DUMMY_REGEN_PER_SECOND)
+			end
+		end
+	end)
+end
+
 function HubService.start()
 	local hubRefs = refs
 	assert(hubRefs, "Застава не построена")
+	spawnDummy(hubRefs)
 	hubRefs.beacon.prompt.Triggered:Connect(onBeaconTriggered)
 	Players.PlayerRemoving:Connect(function(player)
 		lastPlayerUse[player] = nil

@@ -17,6 +17,8 @@ local Controllers = script.Controllers
 local controllers: { { name: string, module: Controller } } = {
 	{ name = "NotificationController", module = require(Controllers.NotificationController) :: any },
 	{ name = "HudController", module = require(Controllers.HudController) :: any },
+	{ name = "CombatController", module = require(Controllers.CombatController) :: any },
+	{ name = "CombatFeedbackController", module = require(Controllers.CombatFeedbackController) :: any },
 	{ name = "SettingsController", module = require(Controllers.SettingsController) :: any },
 	{ name = "TipsController", module = require(Controllers.TipsController) :: any },
 }

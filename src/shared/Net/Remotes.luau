@@ -27,6 +27,13 @@ export type NotifyPayload = {
 	kind: NotifyKind,
 }
 
+-- Куда и как сильно пришёлся удар. Клиент показывает по этому цифры урона.
+export type HitPayload = {
+	position: Vector3,
+	amount: number,
+	crit: boolean,
+}
+
 local function toServer(name: string, burst: number, perSecond: number): RemoteDef
 	return table.freeze({
 		name = name,
@@ -51,14 +58,31 @@ end
 -- Изменение настройки профиля. Ключ и значение проверяются по ProfileSchema.SettingsSpec.
 local UpdateSetting = toServer("UpdateSetting", 5, 2)
 
+-- Attack(direction: Vector3) — намерение ударить в заданную сторону.
+-- Клиент присылает только направление: куда пришёлся удар, по кому и сколько урона,
+-- решает сервер. Лимит с запасом над предельной скоростью атаки (2 удара/с при потолке
+-- AttackSpeed = 2 и интервале 0,42 с), остальное отсекает проверка перезарядки.
+local Attack = toServer("Attack", 6, 4)
+
 -- Сервер → клиент -------------------------------------------------------------------------
 
 -- Notify(payload: NotifyPayload) — всплывающее уведомление.
 local Notify = toClient("Notify", false)
 
+-- Hit(payload: HitPayload) — попадание по цели: цифры урона у атаковавшего.
+-- Ненадёжное событие: это украшение, и потерянный пакет не должен задерживать остальные.
+local Hit = toClient("Hit", true)
+
+-- AttackPerformed(interval: number) — сервер принял удар и начал перезарядку.
+-- Клиент по этому проигрывает замах и знает, когда можно бить снова.
+local AttackPerformed = toClient("AttackPerformed", false)
+
 return table.freeze({
 	UpdateSetting = UpdateSetting,
+	Attack = Attack,
 	Notify = Notify,
+	Hit = Hit,
+	AttackPerformed = AttackPerformed,
 
-	All = table.freeze({ UpdateSetting, Notify }),
+	All = table.freeze({ UpdateSetting, Attack, Notify, Hit, AttackPerformed }),
 })

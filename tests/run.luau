@@ -10,6 +10,8 @@ require("./Rng.spec")
 require("./ProfileSchema.spec")
 require("./DataStoreErrors.spec")
 require("./SessionLock.spec")
+require("./Stats.spec")
+require("./Damage.spec")
 require("./Definitions.spec")
 
 local _, failed = Test.run()

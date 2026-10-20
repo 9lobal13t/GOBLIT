@@ -49,6 +49,16 @@ function Geometry.disc(name: string, center: Vector3, diameter: number, thicknes
 	})
 end
 
+-- Жёсткое соединение: part двигается вместе с anchor, когда сервер переносит модель.
+function Geometry.weld(anchor: BasePart, part: BasePart): WeldConstraint
+	part.Anchored = anchor.Anchored
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = anchor
+	weld.Part1 = part
+	weld.Parent = anchor
+	return weld
+end
+
 -- Точечный свет без теней: тени от множества ламп слишком дороги для слабых устройств.
 function Geometry.pointLight(parent: BasePart, color: Color3, range: number, brightness: number): PointLight
 	local light = Instance.new("PointLight")

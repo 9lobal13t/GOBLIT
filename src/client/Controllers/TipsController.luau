@@ -41,7 +41,7 @@ function TipsController.start()
 		task.wait(WELCOME_DELAY)
 		if tipsEnabled() then
 			NotificationController.push(
-				"Добро пожаловать на Заставу! Подойдите к маяку в центре площади и активируйте его.",
+				"Добро пожаловать на Заставу! Справа тренировочная площадка: нажмите левую кнопку мыши, чтобы ударить манекен.",
 				"info"
 			)
 		end

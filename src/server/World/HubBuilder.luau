@@ -19,6 +19,7 @@ export type BeaconRefs = {
 export type HubRefs = {
 	spawn: SpawnLocation,
 	beacon: BeaconRefs,
+	trainingGround: Vector3, -- центр площадки для тренировочного манекена
 }
 
 local FLOOR_TOP = 1
@@ -223,6 +224,30 @@ local function buildCrates(parent: Folder)
 	end
 end
 
+-- Тренировочная площадка (ТЗ 3.3): место, где можно бить манекен, не мешая другим.
+-- Стоит сбоку от площади, чтобы бой не загораживал путь к маяку и к вратам.
+local TRAINING_CENTER = Vector3.new(38, 0, 18)
+
+local function buildTrainingGround(parent: Folder)
+	local floor =
+		Geometry.disc("TrainingFloor", Vector3.new(TRAINING_CENTER.X, y(0.1), TRAINING_CENTER.Z), 26, 0.4, parent)
+	floor.Color = Palette.Path
+	floor.Material = Enum.Material.Ground
+
+	for _, offset in
+		{ Vector3.new(-11, 0, -11), Vector3.new(11, 0, -11), Vector3.new(-11, 0, 11), Vector3.new(11, 0, 11) }
+	do
+		Geometry.part({
+			name = "TrainingPost",
+			size = Vector3.new(1.2, 5, 1.2),
+			cframe = CFrame.new(TRAINING_CENTER + offset + Vector3.new(0, y(2.5), 0)),
+			color = Palette.Crate,
+			material = Enum.Material.WoodPlanks,
+			parent = parent,
+		})
+	end
+end
+
 local function buildSpawn(parent: Folder): SpawnLocation
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "OutpostSpawn"
@@ -295,9 +320,14 @@ function HubBuilder.build(parent: Folder): HubRefs
 	buildTowers(parent)
 	buildArch(parent)
 	buildCrates(parent)
+	buildTrainingGround(parent)
 	local spawn = buildSpawn(parent)
 	local beacon = buildBeacon(parent)
-	return { spawn = spawn, beacon = beacon }
+	return {
+		spawn = spawn,
+		beacon = beacon,
+		trainingGround = Vector3.new(TRAINING_CENTER.X, y(0), TRAINING_CENTER.Z),
+	}
 end
 
 return table.freeze(HubBuilder)

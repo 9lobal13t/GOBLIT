@@ -1,16 +1,20 @@
 --!strict
 -- Состояние героя игрока на сервере.
 --
--- Фаза 1: зона нахождения, базовые показатели из Config и настройка персонажа.
+-- Зона нахождения, характеристики героя и настройка персонажа.
 -- Здоровье и выносливость хранит сервер, а не Humanoid, и реплицирует их атрибутами
--- игрока (их читают HUD и, позже, панель группы). Урон, перки и уровни подключаются
--- в фазе 2 — см. docs/ROADMAP.md.
+-- игрока (их читают HUD и, позже, панель группы).
+--
+-- Характеристики (hero.stats) считает Logic/Stats из базовых значений и модификаторов.
+-- Модификаторов пока нет: перки подключатся в фазе 2б, и тогда пересчёт пойдёт через
+-- ту же функцию refreshStats.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.Config)
 local Constants = require(ReplicatedStorage.Shared.Constants)
+local Stats = require(ReplicatedStorage.Shared.Logic.Stats)
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 local ErrorReporter = require(ReplicatedStorage.Shared.Util.ErrorReporter)
 
@@ -23,6 +27,8 @@ export type Hero = {
 	stamina: number,
 	maxStamina: number,
 	level: number,
+	modifiers: { Stats.Modifier },
+	stats: { [string]: number },
 }
 
 local HUMANOID_WAIT_SECONDS = 10
@@ -44,19 +50,45 @@ local function replicate(hero: Hero)
 	player:SetAttribute(Attr.Stamina, hero.stamina)
 	player:SetAttribute(Attr.MaxStamina, hero.maxStamina)
 	player:SetAttribute(Attr.Level, hero.level)
+	player:SetAttribute(Attr.AttackPower, hero.stats.AttackPower)
+	player:SetAttribute(Attr.AttackInterval, Stats.attackInterval(Config.Weapon.AttackInterval, hero.stats.AttackSpeed))
+	player:SetAttribute(Attr.DodgeCooldown, hero.stats.DodgeCooldown)
+end
+
+-- Пересчитывает характеристики по базе и модификаторам. Вызывается при изменении
+-- набора перков и предметов. Здоровье и выносливость сохраняют свою долю от максимума,
+-- чтобы перк на запас здоровья не лечил и не калечил героя.
+local function refreshStats(hero: Hero)
+	local healthFraction = if hero.maxHealth > 0 then hero.health / hero.maxHealth else 1
+	local staminaFraction = if hero.maxStamina > 0 then hero.stamina / hero.maxStamina else 1
+
+	hero.stats = Stats.compute(Config.Hero.BaseStats, hero.modifiers, Config.Hero.StatCaps)
+	hero.maxHealth = hero.stats.MaxHealth
+	hero.maxStamina = hero.stats.MaxStamina
+	hero.health = math.clamp(math.floor(hero.maxHealth * healthFraction + 0.5), 1, hero.maxHealth)
+	hero.stamina = math.clamp(hero.maxStamina * staminaFraction, 0, hero.maxStamina)
+
+	local character = hero.player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.WalkSpeed = hero.stats.MoveSpeed
+	end
+	replicate(hero)
 end
 
 local function newHero(player: Player): Hero
-	local base = Config.Hero.BaseStats
+	local stats = Stats.compute(Config.Hero.BaseStats, {}, Config.Hero.StatCaps)
 	return {
 		player = player,
 		zone = Constants.HubZone,
 		state = Constants.HeroState.Alive,
-		health = base.MaxHealth,
-		maxHealth = base.MaxHealth,
-		stamina = base.MaxStamina,
-		maxStamina = base.MaxStamina,
+		health = stats.MaxHealth,
+		maxHealth = stats.MaxHealth,
+		stamina = stats.MaxStamina,
+		maxStamina = stats.MaxStamina,
 		level = 1,
+		modifiers = {},
+		stats = stats,
 	}
 end
 
@@ -69,7 +101,7 @@ local function setupCharacter(hero: Hero, character: Model)
 	end
 	local humanoid = found
 
-	humanoid.WalkSpeed = Config.Hero.BaseStats.MoveSpeed
+	humanoid.WalkSpeed = hero.stats.MoveSpeed
 	humanoid.UseJumpPower = false
 	humanoid.JumpHeight = Config.Hero.DefaultJumpHeight
 	-- Стандартная полоска здоровья Roblox не отражает серверное здоровье героя.
@@ -112,6 +144,18 @@ end
 function HeroService.distanceTo(player: Player, position: Vector3): number
 	local root = HeroService.getRootPart(player)
 	return if root then (root.Position - position).Magnitude else math.huge
+end
+
+-- Добавляет герою модификаторы характеристик (перк, предмет) и пересчитывает их.
+function HeroService.addModifiers(player: Player, modifiers: { Stats.Modifier })
+	local hero = heroes[player]
+	if not hero then
+		return
+	end
+	for _, modifier in modifiers do
+		table.insert(hero.modifiers, modifier)
+	end
+	refreshStats(hero)
 end
 
 function HeroService.init() end
