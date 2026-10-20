@@ -185,7 +185,11 @@ local function buildArch(parent: Folder)
 	local surface = Instance.new("SurfaceGui")
 	surface.Face = Enum.NormalId.Back -- задняя грань детали смотрит на площадь (+Z)
 	surface.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
-	surface.PixelsPerStud = 40
+	-- 20, а не 40. Размер шрифта в Roblox не бывает больше 100, поэтому высота букв в мире
+	-- равна 100 / PixelsPerStud стадов: при 40 это потолок в 2,5 стада, и увеличение самой
+	-- таблички только добавляло пустое поле вокруг букв (проверка R25). При 20 потолок — 5
+	-- стадов, то есть буквы ровно по высоте таблички (5,4), а чёткости 100 пикселей хватает.
+	surface.PixelsPerStud = 20
 	surface.LightInfluence = 0
 	local label = Instance.new("TextLabel")
 	label.Size = UDim2.fromScale(1, 1)
