@@ -43,6 +43,17 @@ Test.describe("Config", function(it)
 		expect(Config.Data.AutosaveSeconds * 2 < Config.Data.LockTtlSeconds).toBe(true)
 	end)
 
+	it("свежую чужую блокировку забираем только после худшего времени финальной записи", function()
+		-- Финальная запись может ждать идущее автосохранение и сама делает до SaveAttempts попыток
+		-- с паузами 2, 4, … с. Берём оба ожидания и запас 10 с на сами запросы.
+		local backoff = 0
+		for attempt = 1, Config.Data.SaveAttempts - 1 do
+			backoff += 2 ^ attempt
+		end
+		expect(Config.Data.ForceLockAfterSeconds >= backoff * 2 + 10).toBe(true)
+		expect(Config.Data.ForceLockAfterSeconds < Config.Data.LockTtlSeconds).toBe(true)
+	end)
+
 	it("в стартовом лагере хватает точек появления на полную группу", function()
 		local start = Rooms.ById.start_camp
 		expect(#start.playerSpawns >= Config.Lobby.MaxPartySize).toBe(true)

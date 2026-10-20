@@ -3,10 +3,18 @@
 -- валюты профиля и предупреждение об отключённом сохранении.
 -- Все значения берутся из атрибутов игрока, которые выставляет сервер; HUD ничего
 -- не считает сам и не может показать то, чего нет на сервере.
+--
+-- Раскладка обходит стандартные элементы Roblox:
+--   • левый верхний угол свободен — там на ПК открывается окно чата;
+--   • сверху по центру — название зоны и плашка сохранения, под ними уведомления;
+--   • слева посередине — валюты; справа сверху — кнопка настроек (SettingsController);
+--   • внизу по центру — здоровье и выносливость; при сенсорном вводе панель сужается,
+--     чтобы не заходить на джойстик и кнопку прыжка.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local StarterGui = game:GetService("StarterGui")
+local UserInputService = game:GetService("UserInputService")
 
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local Theme = require(script.Parent.Parent.UI.Theme)
@@ -16,6 +24,14 @@ local Scale = require(script.Parent.Parent.UI.Scale)
 local Attr = Constants.PlayerAttr
 local BAR_TWEEN_SECONDS = 0.15
 local CORE_GUI_RETRIES = 10
+
+local VITALS_WIDTH = 420
+local VITALS_MIN_WIDTH = 240
+local VITALS_HEIGHT = 60
+-- Кнопка прыжка на маленьком экране стоит в 95 точках от правого края (PlayerModule,
+-- TouchJump: Position (1, -95)); джойстик слева занимает столько же. Плюс зазор.
+local TOUCH_CONTROLS_INSET = 95
+local TOUCH_CONTROLS_GAP = 8
 
 local ZONE_NAMES: { [string]: string } = {
 	[Constants.HubZone] = "Застава",
@@ -102,11 +118,28 @@ local function buildVitals(gui: ScreenGui)
 		Name = "Vitals",
 		AnchorPoint = Vector2.new(0.5, 1),
 		Position = UDim2.new(0.5, 0, 1, -18),
-		Size = UDim2.new(0, 420, 0, 60),
+		Size = UDim2.fromOffset(VITALS_WIDTH, VITALS_HEIGHT),
 		BackgroundColor3 = Theme.Colors.Panel,
 		BackgroundTransparency = Theme.PanelTransparency,
 		Parent = gui,
 	}, { Ui.corner(), Ui.stroke(Theme.Colors.Border, 1, 0.3), Ui.padding(8, 10) }) :: Frame
+
+	-- При сенсорном вводе панель не шире промежутка между джойстиком и кнопкой прыжка.
+	-- Их отступ задан в реальных точках экрана, поэтому переводим его в единицы макета.
+	local function fitWidth()
+		local width = VITALS_WIDTH
+		if UserInputService.PreferredInput == Enum.PreferredInput.Touch then
+			local reserve = (TOUCH_CONTROLS_INSET + TOUCH_CONTROLS_GAP) / Scale.factor()
+			width = math.clamp(Scale.virtualSize(gui).X - reserve * 2, VITALS_MIN_WIDTH, VITALS_WIDTH)
+		end
+		panel.Size = UDim2.fromOffset(math.floor(width), VITALS_HEIGHT)
+	end
+	Scale.Changed:Connect(function()
+		fitWidth()
+	end)
+	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitWidth)
+	UserInputService:GetPropertyChangedSignal("PreferredInput"):Connect(fitWidth)
+	fitWidth()
 
 	local levelBadge = Ui.new("Frame", {
 		Name = "Level",
@@ -197,47 +230,43 @@ local function currencyChip(parent: Instance, order: number, color: Color3, attr
 	end)
 end
 
-local function buildTopLeft(gui: ScreenGui)
+local function buildZone(gui: ScreenGui)
+	local zoneLabel = Ui.label({
+		Name = "Zone",
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.new(0.5, 0, 0, 12),
+		Size = UDim2.fromOffset(0, 28),
+		AutomaticSize = Enum.AutomaticSize.X,
+		TextXAlignment = Enum.TextXAlignment.Center,
+		FontFace = Theme.Fonts.Heavy,
+		TextSize = Theme.TextSize.Title,
+		TextStrokeTransparency = 0.6,
+		Parent = gui,
+	})
+	onAttributes({ Attr.Zone }, function()
+		local zone = player:GetAttribute(Attr.Zone)
+		zoneLabel.Text = if type(zone) == "string" then ZONE_NAMES[zone] or "Подземелье" else ""
+	end)
+end
+
+local function buildCurrencies(gui: ScreenGui)
 	local column = Ui.new("Frame", {
-		Name = "TopLeft",
-		Position = UDim2.fromOffset(16, 12),
+		Name = "Currencies",
+		AnchorPoint = Vector2.new(0, 0.5),
+		Position = UDim2.new(0, 16, 0.5, 0),
 		Size = UDim2.fromOffset(0, 0),
 		AutomaticSize = Enum.AutomaticSize.XY,
 		BackgroundTransparency = 1,
 		Parent = gui,
 	}, { Ui.list(Enum.FillDirection.Vertical, 6) }) :: Frame
 
-	local zoneLabel = Ui.label({
-		Name = "Zone",
-		LayoutOrder = 1,
-		Size = UDim2.fromOffset(0, 28),
-		AutomaticSize = Enum.AutomaticSize.X,
-		FontFace = Theme.Fonts.Heavy,
-		TextSize = Theme.TextSize.Title,
-		TextStrokeTransparency = 0.6,
-		Parent = column,
-	})
-	onAttributes({ Attr.Zone }, function()
-		local zone = player:GetAttribute(Attr.Zone)
-		zoneLabel.Text = if type(zone) == "string" then ZONE_NAMES[zone] or "Подземелье" else ""
-	end)
-
-	local currencies = Ui.new("Frame", {
-		Name = "Currencies",
-		LayoutOrder = 2,
-		Size = UDim2.fromOffset(0, 30),
-		AutomaticSize = Enum.AutomaticSize.X,
-		BackgroundTransparency = 1,
-		Parent = column,
-	}, { Ui.list(Enum.FillDirection.Horizontal, 6) }) :: Frame
-
-	currencyChip(currencies, 1, Theme.Colors.Gold, Attr.Gold, "золото")
-	currencyChip(currencies, 2, Theme.Colors.Shards, Attr.RelicShards, "осколки")
-	currencyChip(currencies, 3, Theme.Colors.Knowledge, Attr.Knowledge, "знания")
+	currencyChip(column, 1, Theme.Colors.Gold, Attr.Gold, "золото")
+	currencyChip(column, 2, Theme.Colors.Shards, Attr.RelicShards, "осколки")
+	currencyChip(column, 3, Theme.Colors.Knowledge, Attr.Knowledge, "знания")
 
 	-- Пока профиль не загружен, валюты неизвестны — не показываем нули как настоящие значения.
 	onAttributes({ Attr.DataReady }, function()
-		currencies.Visible = player:GetAttribute(Attr.DataReady) == true
+		column.Visible = player:GetAttribute(Attr.DataReady) == true
 	end)
 end
 
@@ -245,7 +274,7 @@ local function buildSaveWarning(gui: ScreenGui)
 	local pill = Ui.new("Frame", {
 		Name = "SaveWarning",
 		AnchorPoint = Vector2.new(0.5, 0),
-		Position = UDim2.new(0.5, 0, 0, 12),
+		Position = UDim2.new(0.5, 0, 0, 46), -- под названием зоны (12 + 28 + 6)
 		Size = UDim2.fromOffset(0, 30),
 		AutomaticSize = Enum.AutomaticSize.X,
 		BackgroundColor3 = Theme.Colors.HealthBack,
@@ -285,7 +314,8 @@ function HudController.init()
 	Scale.attach(gui)
 
 	buildVitals(gui)
-	buildTopLeft(gui)
+	buildZone(gui)
+	buildCurrencies(gui)
 	buildSaveWarning(gui)
 end
 

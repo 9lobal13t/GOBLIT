@@ -1,7 +1,7 @@
 --!strict
 -- Всплывающие уведомления: с сервера (событие Notify) и от других контроллеров (push).
 -- Новые вытесняют старые, а сколько их помещается, зависит от высоты экрана: стопка
--- начинается под валютами (TOP_OFFSET) и не заходит в нижнюю зону HUD (BOTTOM_RESERVED).
+-- начинается под названием зоны (TOP_OFFSET) и не заходит в нижнюю зону HUD (BOTTOM_RESERVED).
 -- На iPhone 7 это 2 уведомления, на ПК — до MAX_VISIBLE.
 
 local Players = game:GetService("Players")
@@ -14,7 +14,7 @@ local Ui = require(script.Parent.Parent.UI.Ui)
 local Scale = require(script.Parent.Parent.UI.Scale)
 
 local MAX_VISIBLE = 4
-local TOP_OFFSET = 88 -- под колонкой «зона + валюты» HudController (12 + 28 + 6 + 30 + отступ)
+local TOP_OFFSET = 88 -- под названием зоны и плашкой сохранения HudController (12 + 28 + 6 + 30 + отступ)
 local BOTTOM_RESERVED = 100 -- полоса здоровья и выносливости внизу
 local TOAST_SLOT = 64 -- высота уведомления в две строки с промежутком
 local MAX_TEXT_LENGTH = 240

@@ -269,7 +269,8 @@ local function buildPanel(gui: ScreenGui): Frame
 		BackgroundTransparency = 1,
 		BorderSizePixel = 0,
 		ScrollingDirection = Enum.ScrollingDirection.Y,
-		AutomaticCanvasSize = Enum.AutomaticSize.Y,
+		-- Область прокрутки задаётся в fitBody: AutomaticCanvasSize ошибается под UIScale.
+		AutomaticCanvasSize = Enum.AutomaticSize.None,
 		CanvasSize = UDim2.new(),
 		ScrollBarThickness = 6,
 		ScrollBarImageColor3 = Theme.Colors.Border,
@@ -299,6 +300,8 @@ local function buildPanel(gui: ScreenGui): Frame
 
 	-- Высота списка = его содержимое, но не больше свободного места на экране.
 	-- Всё считается в единицах макета: AbsoluteContentSize уже умножен на масштаб.
+	-- Область прокрутки тоже задаётся здесь, а не через AutomaticCanvasSize: под UIScale
+	-- он считает её неверно, и нижние кнопки становятся недоступны (docs/PITFALLS.md).
 	local function fitBody()
 		local factor = Scale.factor()
 		local content = bodyLayout.AbsoluteContentSize.Y / factor
@@ -306,6 +309,7 @@ local function buildPanel(gui: ScreenGui): Frame
 		local available = screen - SCREEN_MARGIN * 2 - PANEL_PADDING * 2 - Theme.TouchTarget - PANEL_SPACING
 		local height = math.min(content, math.max(available, MIN_BODY_HEIGHT))
 		body.Size = UDim2.new(1, 0, 0, math.ceil(height))
+		body.CanvasSize = UDim2.fromOffset(0, math.ceil(content))
 	end
 	bodyLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(fitBody)
 	gui:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitBody)

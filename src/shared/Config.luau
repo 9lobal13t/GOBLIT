@@ -198,9 +198,14 @@ local Config = {
 
 	Data = {
 		StoreName = "GOBLIT_Profiles_v1",
+		-- В Studio профили хранятся отдельно: тесты не трогают настоящие данные игроков.
+		StudioStoreSuffix = "_Studio",
 		AutosaveSeconds = 60,
 		LockTtlSeconds = 180,
-		LoadAttempts = 4,
+		-- Свежую чужую блокировку забираем не раньше: финальная запись прошлого сервера
+		-- (до SaveAttempts попыток с паузами 2 и 4 с) к этому моменту точно закончится.
+		ForceLockAfterSeconds = 30,
+		LoadAttempts = 4, -- сколько ошибок DataStore подряд допускается при загрузке
 		RetryDelaySeconds = 3,
 		SaveAttempts = 3,
 	},
