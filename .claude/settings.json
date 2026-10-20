@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "deny": [
+      "mcp__robloxstudio__set_script_source",
+      "mcp__robloxstudio__edit_script_lines",
+      "mcp__robloxstudio__insert_script_lines",
+      "mcp__robloxstudio__delete_script_lines",
+      "mcp__robloxstudio__find_and_replace_in_scripts",
+      "mcp__robloxstudio__manage_monetization",
+      "mcp__robloxstudio__upload_asset"
+    ]
+  }
+}
