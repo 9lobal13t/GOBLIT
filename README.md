@@ -22,7 +22,7 @@
 
 ### Настройки места в Studio
 
-- **Сохранение профиля.** Опубликуйте место, затем включите *Game Settings → Security → Enable Studio Access to API Services*. Без этого игра работает, но сохранение отключено, и HUD показывает это предупреждение.
+- **Сохранение профиля.** Опубликуйте место, затем включите *File → Experience Settings → Security → Enable Studio Access to API Services → Save* (в старых версиях Studio пункт назывался Game Settings). Без этого игра работает, но сохранение отключено, и HUD показывает это предупреждение. В Studio профили пишутся в отдельное хранилище `GOBLIT_Profiles_v1_Studio`, настоящие профили игроков не затрагиваются.
 - **StreamingEnabled = false.** `rojo build` выставляет это сам. При `rojo serve` в существующее место отключите вручную: *Workspace → StreamingEnabled*.
 - **Shift lock.** Выключен через `StarterPlayer.EnableMouseLockOption`, потому что Shift будет клавишей уклонения.
 
