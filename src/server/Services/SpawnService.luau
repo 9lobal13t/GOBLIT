@@ -31,7 +31,8 @@ local function spawnCharacter(player: Player)
 end
 
 local function respawnAfterDeath(player: Player, character: Model)
-	local found = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", HUMANOID_WAIT_SECONDS)
+	local found = character:FindFirstChildOfClass("Humanoid")
+		or character:WaitForChild("Humanoid", HUMANOID_WAIT_SECONDS)
 	if not found or not found:IsA("Humanoid") then
 		return
 	end
@@ -60,7 +61,10 @@ end
 
 function SpawnService.start()
 	if not HubService.isBuilt() then
-		ErrorReporter.report("Spawn", "Застава не построена: персонажи появятся без точки появления")
+		ErrorReporter.report(
+			"Spawn",
+			"Застава не построена: персонажи появятся без точки появления"
+		)
 	end
 	Players.PlayerAdded:Connect(onPlayerAdded)
 	Players.PlayerRemoving:Connect(function(player)

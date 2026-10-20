@@ -10,6 +10,15 @@ DEFS_URL="https://raw.githubusercontent.com/JohnnyMorganz/luau-lsp/main/scripts/
 step() { printf '\n== %s ==\n' "$1"; }
 
 step "Форматирование (StyLua)"
+# Сначала проверяем саму проверку: StyLua без поддержки Luau молча пропускает файлы .luau
+# и отвечает «всё хорошо» (так уже было, см. docs/PITFALLS.md). Заведомо неотформатированный
+# фрагмент Luau с шаблонной строкой обязан дать код 1.
+canary_status=0
+printf 'local   x =`{1}`\n' | stylua --check - > /dev/null 2>&1 || canary_status=$?
+if [ "$canary_status" -ne 1 ]; then
+	echo "StyLua не проверяет Luau (код $canary_status вместо 1): нужна сборка с поддержкой Luau (rokit install)"
+	exit 1
+fi
 stylua --check src tests
 echo "ok"
 

@@ -130,7 +130,14 @@ end
 local function buildTowers(parent: Folder)
 	local towerHeight = 16
 	local inset = HALF_SIZE - 5
-	for _, corner in { Vector3.new(-inset, 0, -inset), Vector3.new(inset, 0, -inset), Vector3.new(-inset, 0, inset), Vector3.new(inset, 0, inset) } do
+	for _, corner in
+		{
+			Vector3.new(-inset, 0, -inset),
+			Vector3.new(inset, 0, -inset),
+			Vector3.new(-inset, 0, inset),
+			Vector3.new(inset, 0, inset),
+		}
+	do
 		local tower = Geometry.part({
 			name = "Tower",
 			size = Vector3.new(10, towerHeight, 10),
@@ -200,7 +207,8 @@ local function buildCrates(parent: Folder)
 		Geometry.part({
 			name = "Crate",
 			size = Vector3.new(crate.size, crate.size, crate.size),
-			cframe = CFrame.new(crate.pos + Vector3.new(0, y(crate.size / 2), 0)) * CFrame.Angles(0, math.rad(crate.turn), 0),
+			cframe = CFrame.new(crate.pos + Vector3.new(0, y(crate.size / 2), 0))
+				* CFrame.Angles(0, math.rad(crate.turn), 0),
 			color = Palette.Crate,
 			material = Enum.Material.WoodPlanks,
 			parent = parent,

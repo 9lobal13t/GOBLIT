@@ -114,7 +114,9 @@ local function onServerNotify(payload: unknown)
 	if type(text) ~= "string" then
 		return
 	end
-	local validKind: Remotes.NotifyKind = if kind == "success" or kind == "warning" or kind == "error"
+	local validKind: Remotes.NotifyKind = if kind == "success"
+			or kind == "warning"
+			or kind == "error"
 		then kind
 		else "info"
 	NotificationController.push(text, validKind)

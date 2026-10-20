@@ -61,7 +61,8 @@ local function newHero(player: Player): Hero
 end
 
 local function setupCharacter(hero: Hero, character: Model)
-	local found = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", HUMANOID_WAIT_SECONDS)
+	local found = character:FindFirstChildOfClass("Humanoid")
+		or character:WaitForChild("Humanoid", HUMANOID_WAIT_SECONDS)
 	if not found or not found:IsA("Humanoid") then
 		ErrorReporter.report("Hero", `у персонажа UserId {hero.player.UserId} нет Humanoid`)
 		return

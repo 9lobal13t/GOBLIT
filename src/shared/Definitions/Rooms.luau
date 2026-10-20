@@ -246,7 +246,12 @@ local Templates: { RoomTemplate } = {
 		category = "Altar",
 		displayName = "Кровавый алтарь",
 		features = { feature("altar", 0, 0) },
-		obstacles = { pillar(-12, -12, 2.5, 14), pillar(12, -12, 2.5, 14), pillar(-12, 12, 2.5, 14), pillar(12, 12, 2.5, 14) },
+		obstacles = {
+			pillar(-12, -12, 2.5, 14),
+			pillar(12, -12, 2.5, 14),
+			pillar(-12, 12, 2.5, 14),
+			pillar(12, 12, 2.5, 14),
+		},
 		spawnPoints = {},
 	}),
 	template({

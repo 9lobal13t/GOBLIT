@@ -106,7 +106,9 @@ local function onBeaconTriggered(player: Player)
 
 	NetServer.notify(
 		player,
-		if beaconLit then "Маяк зажжён — Застава снова в свете." else "Маяк погас. Темнота подступает к стенам.",
+		if beaconLit
+			then "Маяк зажжён — Застава снова в свете."
+			else "Маяк погас. Темнота подступает к стенам.",
 		"info"
 	)
 end

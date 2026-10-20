@@ -23,41 +23,56 @@ local function isDeepFrozen(value: any): boolean
 end
 
 Test.describe("Config", function(it)
-	it("полностью заморожен — случайно изменить баланс во время игры нельзя", function()
-		expect(isDeepFrozen(Config)).toBe(true)
-	end)
-
-	it("у каждого предела Min ≤ Max, и базовые характеристики укладываются в пределы", function()
-		for stat, cap in Config.Hero.StatCaps do
-			expect(cap.Min <= cap.Max).toBe(true)
-			local base = (Config.Hero.BaseStats :: any)[stat]
-			expect(base ~= nil).toBe(true)
-			expect(base >= cap.Min and base <= cap.Max).toBe(true)
+	it(
+		"полностью заморожен — случайно изменить баланс во время игры нельзя",
+		function()
+			expect(isDeepFrozen(Config)).toBe(true)
 		end
-		for stat in Config.Hero.BaseStats do
-			expect((Config.Hero.StatCaps :: any)[stat] ~= nil).toBe(true)
+	)
+
+	it(
+		"у каждого предела Min ≤ Max, и базовые характеристики укладываются в пределы",
+		function()
+			for stat, cap in Config.Hero.StatCaps do
+				expect(cap.Min <= cap.Max).toBe(true)
+				local base = (Config.Hero.BaseStats :: any)[stat]
+				expect(base ~= nil).toBe(true)
+				expect(base >= cap.Min and base <= cap.Max).toBe(true)
+			end
+			for stat in Config.Hero.BaseStats do
+				expect((Config.Hero.StatCaps :: any)[stat] ~= nil).toBe(true)
+			end
 		end
-	end)
+	)
 
-	it("автосохранение продлевает блокировку профиля раньше, чем она устареет", function()
-		expect(Config.Data.AutosaveSeconds * 2 < Config.Data.LockTtlSeconds).toBe(true)
-	end)
-
-	it("свежую чужую блокировку забираем только после худшего времени финальной записи", function()
-		-- Финальная запись может ждать идущее автосохранение и сама делает до SaveAttempts попыток
-		-- с паузами 2, 4, … с. Берём оба ожидания и запас 10 с на сами запросы.
-		local backoff = 0
-		for attempt = 1, Config.Data.SaveAttempts - 1 do
-			backoff += 2 ^ attempt
+	it(
+		"автосохранение продлевает блокировку профиля раньше, чем она устареет",
+		function()
+			expect(Config.Data.AutosaveSeconds * 2 < Config.Data.LockTtlSeconds).toBe(true)
 		end
-		expect(Config.Data.ForceLockAfterSeconds >= backoff * 2 + 10).toBe(true)
-		expect(Config.Data.ForceLockAfterSeconds < Config.Data.LockTtlSeconds).toBe(true)
-	end)
+	)
 
-	it("в стартовом лагере хватает точек появления на полную группу", function()
-		local start = Rooms.ById.start_camp
-		expect(#start.playerSpawns >= Config.Lobby.MaxPartySize).toBe(true)
-	end)
+	it(
+		"свежую чужую блокировку забираем только после худшего времени финальной записи",
+		function()
+			-- Финальная запись может ждать идущее автосохранение и сама делает до SaveAttempts попыток
+			-- с паузами 2, 4, … с. Берём оба ожидания и запас 10 с на сами запросы.
+			local backoff = 0
+			for attempt = 1, Config.Data.SaveAttempts - 1 do
+				backoff += 2 ^ attempt
+			end
+			expect(Config.Data.ForceLockAfterSeconds >= backoff * 2 + 10).toBe(true)
+			expect(Config.Data.ForceLockAfterSeconds < Config.Data.LockTtlSeconds).toBe(true)
+		end
+	)
+
+	it(
+		"в стартовом лагере хватает точек появления на полную группу",
+		function()
+			local start = Rooms.ById.start_camp
+			expect(#start.playerSpawns >= Config.Lobby.MaxPartySize).toBe(true)
+		end
+	)
 end)
 
 Test.describe("Perks", function(it)
@@ -68,21 +83,24 @@ Test.describe("Perks", function(it)
 		end
 	end)
 
-	it("модификаторы ссылаются только на существующие характеристики", function()
-		for _, perk in Perks.List do
-			for _, modifier in perk.modifiers do
-				local known = (Config.Hero.BaseStats :: any)[modifier.stat] ~= nil
-				if not known then
-					error(`перк {perk.id}: неизвестная характеристика {modifier.stat}`)
-				end
-				expect(Perks.StatLabels[modifier.stat] ~= nil).toBe(true)
-				expect(modifier.op == "add" or modifier.op == "mul").toBe(true)
-				if modifier.op == "mul" then
-					expect(modifier.value).toBeGreaterThan(0)
+	it(
+		"модификаторы ссылаются только на существующие характеристики",
+		function()
+			for _, perk in Perks.List do
+				for _, modifier in perk.modifiers do
+					local known = (Config.Hero.BaseStats :: any)[modifier.stat] ~= nil
+					if not known then
+						error(`перк {perk.id}: неизвестная характеристика {modifier.stat}`)
+					end
+					expect(Perks.StatLabels[modifier.stat] ~= nil).toBe(true)
+					expect(modifier.op == "add" or modifier.op == "mul").toBe(true)
+					if modifier.op == "mul" then
+						expect(modifier.value).toBeGreaterThan(0)
+					end
 				end
 			end
 		end
-	end)
+	)
 
 	it("у каждого перка есть эффект, название и описание", function()
 		for _, perk in Perks.List do
@@ -124,15 +142,18 @@ Test.describe("Enemies", function(it)
 		end
 	end)
 
-	it("элита в правилах встреч ссылается на врага с элитной версией", function()
-		for _, category in Rooms.Categories do
-			local rule = category.encounter
-			if rule and rule.eliteEnemyId then
-				local enemy = Enemies.ById[rule.eliteEnemyId]
-				expect(enemy ~= nil and enemy.elite ~= nil).toBe(true)
+	it(
+		"элита в правилах встреч ссылается на врага с элитной версией",
+		function()
+			for _, category in Rooms.Categories do
+				local rule = category.encounter
+				if rule and rule.eliteEnemyId then
+					local enemy = Enemies.ById[rule.eliteEnemyId]
+					expect(enemy ~= nil and enemy.elite ~= nil).toBe(true)
+				end
 			end
 		end
-	end)
+	)
 end)
 
 Test.describe("Rooms", function(it)
@@ -168,19 +189,22 @@ Test.describe("Rooms", function(it)
 		W = { minX = -half, maxX = -half + 10, minZ = -doorHalf - 1, maxZ = doorHalf + 1 },
 	}
 
-	it("у каждой категории есть шаблон со всеми четырьмя входами (запасной вариант генератора)", function()
-		for categoryId in Rooms.Categories do
-			local hasFull = false
-			for _, template in Rooms.ByCategory[categoryId] or {} do
-				if #template.sockets == 4 then
-					hasFull = true
+	it(
+		"у каждой категории есть шаблон со всеми четырьмя входами (запасной вариант генератора)",
+		function()
+			for categoryId in Rooms.Categories do
+				local hasFull = false
+				for _, template in Rooms.ByCategory[categoryId] or {} do
+					if #template.sockets == 4 then
+						hasFull = true
+					end
+				end
+				if not hasFull then
+					error(`категория {categoryId}: нет шаблона с 4 входами`)
 				end
 			end
-			if not hasFull then
-				error(`категория {categoryId}: нет шаблона с 4 входами`)
-			end
 		end
-	end)
+	)
 
 	it("входы шаблонов — только N/E/S/W без повторов", function()
 		for _, template in Rooms.Templates do
@@ -193,46 +217,58 @@ Test.describe("Rooms", function(it)
 		end
 	end)
 
-	it("препятствия внутри комнаты и не перекрывают проходы к дверям", function()
-		for _, template in Rooms.Templates do
-			for _, obstacle in template.obstacles do
-				local box = boxOf(obstacle)
-				if box.minX < -interior or box.maxX > interior or box.minZ < -interior or box.maxZ > interior then
-					error(`{template.id}: препятствие {obstacle.kind} выходит за стены`)
-				end
-				for _, side in template.sockets do
-					if overlaps(box, DOOR_ZONES[side]) then
-						error(`{template.id}: препятствие {obstacle.kind} перекрывает проход {side}`)
-					end
-				end
-			end
-		end
-	end)
-
-	it("точки появления и объекты внутри комнаты и не внутри препятствий", function()
-		for _, template in Rooms.Templates do
-			local points = {}
-			for _, p in template.spawnPoints do
-				table.insert(points, { kind = "spawnPoint", x = p.x, z = p.z })
-			end
-			for _, p in template.playerSpawns do
-				table.insert(points, { kind = "playerSpawn", x = p.x, z = p.z })
-			end
-			for _, f in template.features do
-				table.insert(points, { kind = f.kind, x = f.pos.x, z = f.pos.z })
-			end
-			for _, point in points do
-				if math.abs(point.x) > interior - 1 or math.abs(point.z) > interior - 1 then
-					error(`{template.id}: {point.kind} ({point.x}, {point.z}) у самой стены или за ней`)
-				end
+	it(
+		"препятствия внутри комнаты и не перекрывают проходы к дверям",
+		function()
+			for _, template in Rooms.Templates do
 				for _, obstacle in template.obstacles do
-					if inside(boxOf(obstacle), 1, point.x, point.z) then
-						error(`{template.id}: {point.kind} ({point.x}, {point.z}) внутри препятствия {obstacle.kind}`)
+					local box = boxOf(obstacle)
+					if box.minX < -interior or box.maxX > interior or box.minZ < -interior or box.maxZ > interior then
+						error(`{template.id}: препятствие {obstacle.kind} выходит за стены`)
+					end
+					for _, side in template.sockets do
+						if overlaps(box, DOOR_ZONES[side]) then
+							error(
+								`{template.id}: препятствие {obstacle.kind} перекрывает проход {side}`
+							)
+						end
 					end
 				end
 			end
 		end
-	end)
+	)
+
+	it(
+		"точки появления и объекты внутри комнаты и не внутри препятствий",
+		function()
+			for _, template in Rooms.Templates do
+				local points = {}
+				for _, p in template.spawnPoints do
+					table.insert(points, { kind = "spawnPoint", x = p.x, z = p.z })
+				end
+				for _, p in template.playerSpawns do
+					table.insert(points, { kind = "playerSpawn", x = p.x, z = p.z })
+				end
+				for _, f in template.features do
+					table.insert(points, { kind = f.kind, x = f.pos.x, z = f.pos.z })
+				end
+				for _, point in points do
+					if math.abs(point.x) > interior - 1 or math.abs(point.z) > interior - 1 then
+						error(
+							`{template.id}: {point.kind} ({point.x}, {point.z}) у самой стены или за ней`
+						)
+					end
+					for _, obstacle in template.obstacles do
+						if inside(boxOf(obstacle), 1, point.x, point.z) then
+							error(
+								`{template.id}: {point.kind} ({point.x}, {point.z}) внутри препятствия {obstacle.kind}`
+							)
+						end
+					end
+				end
+			end
+		end
+	)
 
 	it("в комнатах со встречами есть точки появления врагов", function()
 		for _, template in Rooms.Templates do

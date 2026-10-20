@@ -88,27 +88,33 @@ Test.describe("Rng", function(it)
 		expect(sequence(Rng.new(2 ^ 32 + 7), 5)).toEqual(sequence(Rng.new(7), 5))
 	end)
 
-	it("fork детерминирован и не зависит от того, сколько чисел уже взято у родителя", function()
-		local parent = Rng.new(2024)
-		local early = sequence(parent:fork("dungeon"), 10)
-		sequence(parent, 100)
-		local late = sequence(parent:fork("dungeon"), 10)
-		expect(late).toEqual(early)
-		expect(sequence(Rng.new(2024):fork("dungeon"), 10)).toEqual(early)
-	end)
+	it(
+		"fork детерминирован и не зависит от того, сколько чисел уже взято у родителя",
+		function()
+			local parent = Rng.new(2024)
+			local early = sequence(parent:fork("dungeon"), 10)
+			sequence(parent, 100)
+			local late = sequence(parent:fork("dungeon"), 10)
+			expect(late).toEqual(early)
+			expect(sequence(Rng.new(2024):fork("dungeon"), 10)).toEqual(early)
+		end
+	)
 
 	it("fork с разными метками даёт независимые потоки", function()
 		local parent = Rng.new(2024)
 		expect(parent:fork("loot"):nextNumber() ~= parent:fork("dungeon"):nextNumber()).toBe(true)
 	end)
 
-	it("weightedIndex никогда не выбирает нулевые и отрицательные веса", function()
-		local rng = Rng.new(7)
-		for _ = 1, 5000 do
-			local index = rng:weightedIndex({ 0, 3, -1, 1 })
-			expect(index == 2 or index == 4).toBe(true)
+	it(
+		"weightedIndex никогда не выбирает нулевые и отрицательные веса",
+		function()
+			local rng = Rng.new(7)
+			for _ = 1, 5000 do
+				local index = rng:weightedIndex({ 0, 3, -1, 1 })
+				expect(index == 2 or index == 4).toBe(true)
+			end
 		end
-	end)
+	)
 
 	it("weightedIndex без положительных весов возвращает nil", function()
 		expect(Rng.new(1):weightedIndex({})).toBeNil()

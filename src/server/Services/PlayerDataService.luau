@@ -100,7 +100,10 @@ end
 local function disableStore(reason: string)
 	if store then
 		store = nil
-		ErrorReporter.report("PlayerData", `DataStore отключён до перезапуска сервера: {reason}`)
+		ErrorReporter.report(
+			"PlayerData",
+			`DataStore отключён до перезапуска сервера: {reason}`
+		)
 	end
 end
 
@@ -163,7 +166,11 @@ local function loadProfile(player: Player, sessionId: string): LoadResult
 			if decision == "stale" or decision == "force" then
 				ErrorReporter.report(
 					"PlayerData.lock",
-					`UserId {player.UserId}: забрана {if decision == "stale" then "устаревшая" else "чужая свежая"} блокировка (возраст {lockAge} с, ожидание {math.floor(waited)} с)`
+					`UserId {player.UserId}: забрана {if decision == "stale"
+						then "устаревшая"
+						else "чужая свежая"} блокировка (возраст {lockAge} с, ожидание {math.floor(
+						waited
+					)} с)`
 				)
 			end
 			if newerVersion then
@@ -195,7 +202,9 @@ local function loadProfile(player: Player, sessionId: string): LoadResult
 		task.wait(Config.Data.RetryDelaySeconds)
 	end
 
-	local problem = if store == nil then "хранилище данных недоступно" else "не удалось загрузить профиль"
+	local problem = if store == nil
+		then "хранилище данных недоступно"
+		else "не удалось загрузить профиль"
 	return { profile = ProfileSchema.default(os.time()), canSave = false, problem = problem }
 end
 

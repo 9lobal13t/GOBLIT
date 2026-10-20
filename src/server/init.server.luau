@@ -38,5 +38,7 @@ end
 if healthy then
 	print(`[GOBLIT] сервер запущен, версия {Config.Version}`)
 else
-	warn(`[GOBLIT] сервер запущен с ошибками, версия {Config.Version} — см. сообщения выше`)
+	warn(
+		`[GOBLIT] сервер запущен с ошибками, версия {Config.Version} — см. сообщения выше`
+	)
 end

@@ -24,7 +24,9 @@ function ErrorReporter.report(context: string, message: unknown, traceback: stri
 		return
 	end
 
-	local suffix = if entry and entry.suppressed > 0 then ` (ещё {entry.suppressed} повторов скрыто)` else ""
+	local suffix = if entry and entry.suppressed > 0
+		then ` (ещё {entry.suppressed} повторов скрыто)`
+		else ""
 	if not entry then
 		trackedCount += 1
 		if trackedCount > MAX_TRACKED_MESSAGES then
