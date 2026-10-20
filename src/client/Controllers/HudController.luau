@@ -6,7 +6,8 @@
 --
 -- Раскладка обходит стандартные элементы Roblox:
 --   • левый верхний угол свободен — там на ПК открывается окно чата;
---   • сверху по центру — название зоны и плашка сохранения, под ними уведомления;
+--   • сверху по центру — название зоны (показывается при входе и исчезает) и плашка
+--     сохранения, под ними уведомления;
 --   • слева посередине — валюты; справа сверху — кнопка настроек (SettingsController);
 --   • внизу по центру — здоровье и выносливость; при сенсорном вводе панель сужается,
 --     чтобы не заходить на джойстик и кнопку прыжка.
@@ -24,6 +25,11 @@ local Scale = require(script.Parent.Parent.UI.Scale)
 local Attr = Constants.PlayerAttr
 local BAR_TWEEN_SECONDS = 0.15
 local CORE_GUI_RETRIES = 10
+
+-- Название зоны держится на экране столько и уходит: постоянно висеть ему незачем,
+-- а над входом в подземелье оно перекрывало надпись на арке (проверка R22).
+local ZONE_HOLD_SECONDS = 4
+local ZONE_FADE_SECONDS = 0.6
 
 local VITALS_WIDTH = 420
 local VITALS_MIN_WIDTH = 240
@@ -242,11 +248,30 @@ local function buildZone(gui: ScreenGui)
 		FontFace = Theme.Fonts.Heavy,
 		TextSize = Theme.TextSize.Title,
 		TextStrokeTransparency = 0.6,
+		TextTransparency = 1,
 		Parent = gui,
 	})
+
+	-- Номер показа: пока ждём, игрок может перейти в другую зону, и прошлый показ
+	-- не должен гасить новое название.
+	local shownAt = 0
 	onAttributes({ Attr.Zone }, function()
 		local zone = player:GetAttribute(Attr.Zone)
-		zoneLabel.Text = if type(zone) == "string" then ZONE_NAMES[zone] or "Подземелье" else ""
+		local name = if type(zone) == "string" then ZONE_NAMES[zone] or "Подземелье" else ""
+		if name == "" then
+			zoneLabel.TextTransparency = 1
+			return
+		end
+
+		shownAt += 1
+		local token = shownAt
+		zoneLabel.Text = name
+		Ui.tween(zoneLabel, ZONE_FADE_SECONDS / 2, { TextTransparency = 0, TextStrokeTransparency = 0.6 })
+		task.delay(ZONE_HOLD_SECONDS, function()
+			if token == shownAt and zoneLabel.Parent then
+				Ui.tween(zoneLabel, ZONE_FADE_SECONDS, { TextTransparency = 1, TextStrokeTransparency = 1 })
+			end
+		end)
 	end)
 end
 

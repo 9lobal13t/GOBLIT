@@ -8,6 +8,10 @@
 -- выбран Roboto как самый разборчивый на мелком тексте телефона.
 -- Символы в тексте — только распространённые (× … —).
 --
+-- Heavy — Black (900): начертания ExtraBold (800) в Roboto нет, и движок подставлял вместо него
+-- Bold, так что заголовки не отличались от кнопок (проверка R20). Если Black тоже не окажется
+-- в семействе, движок снова подставит Bold — то есть хуже текущего не станет.
+--
 -- Семейство берётся из Enum.Font, а не строкой: путь к файлу семейства тогда не нужно угадывать.
 local ROBOTO = Font.fromEnum(Enum.Font.Roboto).Family
 
@@ -45,7 +49,7 @@ local Theme = {
 		Regular = Font.new(ROBOTO, Enum.FontWeight.Regular),
 		Medium = Font.new(ROBOTO, Enum.FontWeight.Medium),
 		Bold = Font.new(ROBOTO, Enum.FontWeight.Bold),
-		Heavy = Font.new(ROBOTO, Enum.FontWeight.ExtraBold),
+		Heavy = Font.new(ROBOTO, Enum.FontWeight.Heavy),
 	},
 
 	TextSize = {

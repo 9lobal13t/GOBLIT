@@ -164,17 +164,19 @@ local function buildArch(parent: Folder)
 	end
 	Geometry.part({
 		name = "ArchLintel",
-		size = Vector3.new(32, 5, 7),
-		cframe = CFrame.new(0, y(24.5), z),
+		size = Vector3.new(32, 7, 7),
+		cframe = CFrame.new(0, y(25.5), z),
 		color = Palette.Tower,
 		material = Enum.Material.Slate,
 		parent = parent,
 	})
 
+	-- Надпись видна через всю площадь, поэтому буквы должны быть крупными: на телефоне
+	-- с места появления они занимали около 6 пикселей в высоту (проверка R22).
 	local sign = Geometry.part({
 		name = "ArchSign",
-		size = Vector3.new(22, 3.6, 0.6),
-		cframe = CFrame.new(0, y(24.5), z + 3.8),
+		size = Vector3.new(28, 5.4, 0.6),
+		cframe = CFrame.new(0, y(25.5), z + 3.8),
 		color = Palette.Sign,
 		material = Enum.Material.WoodPlanks,
 		castShadow = false,
@@ -192,7 +194,7 @@ local function buildArch(parent: Folder)
 	label.TextScaled = true
 	label.TextColor3 = Palette.SignText
 	-- Та же причина, что и в теме клиента: надпись латиницей, но шрифт держим один на всю игру.
-	label.FontFace = Font.new(Font.fromEnum(Enum.Font.Roboto).Family, Enum.FontWeight.ExtraBold)
+	label.FontFace = Font.new(Font.fromEnum(Enum.Font.Roboto).Family, Enum.FontWeight.Heavy)
 	label.Parent = surface
 	surface.Parent = sign
 end
