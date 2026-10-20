@@ -2,11 +2,14 @@
 -- Визуальные константы интерфейса: цвета, шрифты, размеры.
 -- Палитра — тёмный фон с тёплыми и магическими акцентами, как в окружении (ТЗ 21.1).
 --
--- Шрифт — Montserrat: интерфейс на русском, а для Montserrat кириллица в Roblox проверена
--- на практике (docs/LESSONS_BRAINROT_BANDITS.md, раздел 3). Для Builder Sans подтверждения
--- кириллицы найти не удалось. Символы в тексте — только распространённые (× … —).
-
-local MONTSERRAT = "rbxasset://fonts/families/Montserrat.json"
+-- Шрифт — Roboto. В Montserrat кириллица рисуется с промежутками внутри слов почти во всех
+-- начертаниях, и дефект зависит от размера текста (проверка R19, docs/PITFALLS.md). Из семи
+-- проверенных семейств чистыми на размерах 11–22 оказались Roboto, Nunito и SourceSans;
+-- выбран Roboto как самый разборчивый на мелком тексте телефона.
+-- Символы в тексте — только распространённые (× … —).
+--
+-- Семейство берётся из Enum.Font, а не строкой: путь к файлу семейства тогда не нужно угадывать.
+local ROBOTO = Font.fromEnum(Enum.Font.Roboto).Family
 
 local function hex(value: string): Color3
 	return Color3.fromHex(value)
@@ -39,10 +42,10 @@ local Theme = {
 	},
 
 	Fonts = {
-		Regular = Font.new(MONTSERRAT, Enum.FontWeight.Regular),
-		Medium = Font.new(MONTSERRAT, Enum.FontWeight.Medium),
-		Bold = Font.new(MONTSERRAT, Enum.FontWeight.Bold),
-		Heavy = Font.new(MONTSERRAT, Enum.FontWeight.ExtraBold),
+		Regular = Font.new(ROBOTO, Enum.FontWeight.Regular),
+		Medium = Font.new(ROBOTO, Enum.FontWeight.Medium),
+		Bold = Font.new(ROBOTO, Enum.FontWeight.Bold),
+		Heavy = Font.new(ROBOTO, Enum.FontWeight.ExtraBold),
 	},
 
 	TextSize = {

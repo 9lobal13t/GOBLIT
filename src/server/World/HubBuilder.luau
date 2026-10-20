@@ -191,7 +191,8 @@ local function buildArch(parent: Folder)
 	label.Text = "GOBLIT"
 	label.TextScaled = true
 	label.TextColor3 = Palette.SignText
-	label.FontFace = Font.fromEnum(Enum.Font.BuilderSansExtraBold)
+	-- Та же причина, что и в теме клиента: надпись латиницей, но шрифт держим один на всю игру.
+	label.FontFace = Font.new(Font.fromEnum(Enum.Font.Roboto).Family, Enum.FontWeight.ExtraBold)
 	label.Parent = surface
 	surface.Parent = sign
 end
