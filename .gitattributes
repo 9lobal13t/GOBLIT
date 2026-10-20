@@ -1,0 +1,10 @@
+# Одинаковые окончания строк (LF) на всех системах. StyLua настроен на line_endings = "Unix",
+# а Git для Windows по умолчанию переводит текстовые файлы в CRLF, и проверка форматирования
+# на Windows падает.
+* text=auto eol=lf
+
+# Двоичные файлы не трогаем.
+*.rbxl binary
+*.rbxm binary
+*.png binary
+*.jpg binary
