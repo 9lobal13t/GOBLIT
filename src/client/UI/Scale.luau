@@ -36,10 +36,21 @@ local cameraConnection: RBXScriptConnection? = nil
 local started = false
 local current = 1
 
+-- Сенсорное ли управление. PreferredInput показывает последний использованный способ ввода,
+-- и до первого касания он может быть «мышиным» (так ведёт себя эмулятор Studio). Поэтому
+-- устройство без клавиатуры, но с касаниями, считаем сенсорным сразу — иначе на телефоне
+-- первые секунды интерфейс был бы рассчитан на мышь (проверка R14, замечание 1).
+local function isTouch(): boolean
+	if UserInputService.PreferredInput == Enum.PreferredInput.Touch then
+		return true
+	end
+	return UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+end
+
 local function computeFactor(): number
 	local camera = Workspace.CurrentCamera
 	local viewport = if camera then camera.ViewportSize else DESIGN_SIZE
-	local touch = UserInputService.PreferredInput == Enum.PreferredInput.Touch
+	local touch = isTouch()
 	local minAuto = if touch then MIN_AUTO_TOUCH else MIN_AUTO_POINTER
 	local auto = math.clamp(math.min(viewport.X / DESIGN_SIZE.X, viewport.Y / DESIGN_SIZE.Y), minAuto, MAX_AUTO)
 	local userScale = Players.LocalPlayer:GetAttribute(SETTING_ATTR)
@@ -95,6 +106,13 @@ end
 function Scale.factor(): number
 	ensureStarted()
 	return current
+end
+
+-- Сенсорное ли сейчас управление. Контроллеры используют это, чтобы не загонять
+-- панели под джойстик и кнопку прыжка.
+function Scale.isTouch(): boolean
+	ensureStarted()
+	return isTouch()
 end
 
 -- Размер области ScreenGui в единицах макета (до масштабирования).

@@ -29,9 +29,10 @@ local VITALS_WIDTH = 420
 local VITALS_MIN_WIDTH = 240
 local VITALS_HEIGHT = 60
 -- Кнопка прыжка на маленьком экране стоит в 95 точках от правого края (PlayerModule,
--- TouchJump: Position (1, -95)); джойстик слева занимает столько же. Плюс зазор.
-local TOUCH_CONTROLS_INSET = 95
-local TOUCH_CONTROLS_GAP = 8
+-- TouchJump: Position (1, -95)), а кольцо джойстика слева уходит внутрь ещё на 8 точек
+-- дальше — это измерено в Studio (проверка R10, замечание 3). Берём дальнюю границу и зазор.
+local TOUCH_CONTROLS_INSET = 103
+local TOUCH_CONTROLS_GAP = 12
 
 local ZONE_NAMES: { [string]: string } = {
 	[Constants.HubZone] = "Застава",
@@ -128,7 +129,7 @@ local function buildVitals(gui: ScreenGui)
 	-- Их отступ задан в реальных точках экрана, поэтому переводим его в единицы макета.
 	local function fitWidth()
 		local width = VITALS_WIDTH
-		if UserInputService.PreferredInput == Enum.PreferredInput.Touch then
+		if Scale.isTouch() then
 			local reserve = (TOUCH_CONTROLS_INSET + TOUCH_CONTROLS_GAP) / Scale.factor()
 			width = math.clamp(Scale.virtualSize(gui).X - reserve * 2, VITALS_MIN_WIDTH, VITALS_WIDTH)
 		end
@@ -259,6 +260,21 @@ local function buildCurrencies(gui: ScreenGui)
 		BackgroundTransparency = 1,
 		Parent = gui,
 	}, { Ui.list(Enum.FillDirection.Vertical, 6) }) :: Frame
+
+	-- На мыши валюты стоят слева посередине: верхний левый угол занимает окно чата.
+	-- На сенсорном экране чат свёрнут, зато слева снизу джойстик, и посередине плашки
+	-- заходили на его кольцо (проверка R10, замечание 2) — поэтому уводим их вверх.
+	local function placeColumn()
+		if Scale.isTouch() then
+			column.AnchorPoint = Vector2.new(0, 0)
+			column.Position = UDim2.fromOffset(16, 12)
+		else
+			column.AnchorPoint = Vector2.new(0, 0.5)
+			column.Position = UDim2.new(0, 16, 0.5, 0)
+		end
+	end
+	UserInputService:GetPropertyChangedSignal("PreferredInput"):Connect(placeColumn)
+	placeColumn()
 
 	currencyChip(column, 1, Theme.Colors.Gold, Attr.Gold, "золото")
 	currencyChip(column, 2, Theme.Colors.Shards, Attr.RelicShards, "осколки")
