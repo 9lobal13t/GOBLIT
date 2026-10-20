@@ -5,7 +5,10 @@
 -- Ограничения выведены из проверки на iPhone 7 (docs/reports/phase1-studio-check.md):
 --   • при сенсорном вводе интерфейс не уменьшается ниже макета — на телефоне и так мало места,
 --     а уменьшение до 0,7 давало текст в 9 точек;
---   • итоговый множитель не ниже MIN_FACTOR: мелкий текст темы (14) не меньше ~11 точек.
+--   • итоговый множитель не ниже MIN_FACTOR: мелкий текст темы (14) не меньше ~11 точек;
+--   • при сенсорном вводе множитель не ниже 1 даже при настройке «Мелкий»: размеры заданы
+--     в единицах макета и умножаются на множитель, поэтому при 0,85 кнопка Theme.TouchTarget
+--     (44) превращалась в 37 точек — меньше пальца (проверка R9 от 20.10.2026).
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -20,6 +23,7 @@ local MIN_AUTO_TOUCH = 1
 local MIN_AUTO_POINTER = 0.85
 local MAX_AUTO = 1.25
 local MIN_FACTOR = 0.8
+local MIN_FACTOR_TOUCH = 1
 local SETTING_ATTR = Constants.SettingAttrPrefix .. "UiScale"
 
 local Scale = {}
@@ -40,7 +44,7 @@ local function computeFactor(): number
 	local auto = math.clamp(math.min(viewport.X / DESIGN_SIZE.X, viewport.Y / DESIGN_SIZE.Y), minAuto, MAX_AUTO)
 	local userScale = Players.LocalPlayer:GetAttribute(SETTING_ATTR)
 	local factor = auto * (if type(userScale) == "number" then userScale else 1)
-	return math.max(factor, MIN_FACTOR)
+	return math.max(factor, if touch then MIN_FACTOR_TOUCH else MIN_FACTOR)
 end
 
 local function refresh()

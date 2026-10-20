@@ -17,6 +17,22 @@ local BEACON_GLOBAL_COOLDOWN = 0.5
 -- Запас над MaxActivationDistance подсказки: позиция персонажа на сервере отстаёт от клиента.
 local BEACON_MAX_DISTANCE = 16
 
+-- Освещение игры собирается кодом. Эффекты, оставшиеся в месте от шаблона Roblox,
+-- смешивались бы с нашими: в опубликованном месте нашлись Atmosphere, Bloom, SunRays,
+-- DepthOfField рядом с Goblit-эффектами, то есть два Atmosphere и два Bloom
+-- (docs/reports, проверка R13 от 20.10.2026). Поэтому все эффекты этих классов, кроме наших,
+-- удаляются при старте сервера. Sky не трогаем: своего неба у нас нет, и без него
+-- место осталось бы без фона.
+local MANAGED_EFFECT_CLASSES = {
+	"Atmosphere",
+	"BloomEffect",
+	"ColorCorrectionEffect",
+	"SunRaysEffect",
+	"DepthOfFieldEffect",
+	"BlurEffect",
+}
+local EFFECT_PREFIX = "Goblit"
+
 local HubService = {}
 
 local refs: HubBuilder.HubRefs? = nil
@@ -35,8 +51,28 @@ local function ensureEffect(className: string, name: string): Instance
 	return effect
 end
 
+-- Убирает эффекты освещения, оставшиеся в месте от шаблона: иначе они складываются
+-- с нашими, и задуманный вид (сумерки, дымка) не получается.
+local function removeForeignEffects()
+	local removed: { string } = {}
+	for _, child in Lighting:GetChildren() do
+		if
+			table.find(MANAGED_EFFECT_CLASSES, child.ClassName)
+			and string.sub(child.Name, 1, #EFFECT_PREFIX) ~= EFFECT_PREFIX
+		then
+			table.insert(removed, `{child.Name} ({child.ClassName})`)
+			child:Destroy()
+		end
+	end
+	if #removed > 0 then
+		warn(`[GOBLIT][Hub] убраны чужие эффекты освещения: {table.concat(removed, ", ")}`)
+	end
+end
+
 -- Вечерние сумерки: тёплые огни на холодном фоне (ТЗ 3.1 — контрастное освещение).
 local function configureLighting()
+	removeForeignEffects()
+
 	Lighting.ClockTime = 18.2
 	Lighting.Brightness = 2
 	Lighting.Ambient = Color3.fromHex("#2a2633")
