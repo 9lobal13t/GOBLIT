@@ -2,7 +2,7 @@
 -- Бой: приём запросов на удар и проверка их на сервере (ТЗ 23.2, CLAUDE.md).
 --
 -- Клиент присылает только направление удара. Сервер сам решает:
---   • прошла ли перезарядка (с небольшим запасом на сетевую задержку);
+--   • прошла ли перезарядка (AttackClock: с запасом на сетевую задержку, но без ускорения);
 --   • жив ли герой и есть ли у него персонаж;
 --   • кто попал в сектор удара: расстояние, угол и разница по высоте;
 --   • сколько урона нанесено (DamageService).
@@ -17,6 +17,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local Stats = require(ReplicatedStorage.Shared.Logic.Stats)
+local AttackClock = require(ReplicatedStorage.Shared.Logic.AttackClock)
 local Remotes = require(ReplicatedStorage.Shared.Net.Remotes)
 local NetServer = require(script.Parent.Parent.Net.NetServer)
 local HeroService = require(script.Parent.HeroService)
@@ -24,7 +25,8 @@ local EnemyService = require(script.Parent.EnemyService)
 local DamageService = require(script.Parent.DamageService)
 
 type Swing = {
-	lastAt: number,
+	readyAt: number, -- срок следующего удара по расписанию сервера (AttackClock)
+	lastAt: number, -- время прошлого принятого удара: по нему считается серия комбо
 	comboStep: number,
 }
 
@@ -35,7 +37,7 @@ local swings: { [Player]: Swing } = {}
 local function getSwing(player: Player): Swing
 	local swing = swings[player]
 	if not swing then
-		swing = { lastAt = -math.huge, comboStep = 0 }
+		swing = { readyAt = 0, lastAt = -math.huge, comboStep = 0 }
 		swings[player] = swing
 	end
 	return swing
@@ -111,12 +113,14 @@ local function onAttack(player: Player, rawDirection: unknown)
 	local interval = Stats.attackInterval(Config.Weapon.AttackInterval, hero.stats.AttackSpeed)
 	local swing = getSwing(player)
 	local now = os.clock()
-	local sinceLast = now - swing.lastAt
-	-- Запас на сетевую задержку: удар, пришедший чуть раньше срока, принимается,
-	-- иначе игрок с плохой связью будет бить реже остальных.
-	if sinceLast < interval - Config.Weapon.TimingTolerance then
+	-- Расписание ударов ведёт AttackClock: запас на сетевую задержку остаётся, но опережение
+	-- не копится, поэтому клиент не может ускорить бой постоянным спамом (находка C3/C11).
+	local decision = AttackClock.decide(swing.readyAt, now, interval, Config.Weapon.TimingTolerance)
+	if not decision.accepted then
 		return -- не нарушение: клиент мог не успеть узнать о перезарядке
 	end
+	local sinceLast = now - swing.lastAt
+	swing.readyAt = decision.readyAt
 
 	local multipliers = Config.Weapon.ComboMultipliers
 	local step = if sinceLast <= Config.Weapon.ComboResetSeconds then swing.comboStep % #multipliers + 1 else 1
@@ -125,7 +129,9 @@ local function onAttack(player: Player, rawDirection: unknown)
 
 	local isFinisher = step == #multipliers
 	local arc = if isFinisher then Config.Weapon.FinisherArcDegrees else Config.Weapon.ArcDegrees
-	NetServer.fireClient(Remotes.AttackPerformed, player, interval)
+	-- Клиенту отправляется остаток до следующего срока, а не полная перезарядка: тогда его
+	-- предсказание совпадает с расписанием сервера и честные запросы не отбрасываются.
+	NetServer.fireClient(Remotes.AttackPerformed, player, math.max(decision.readyAt - now, 0))
 
 	for _, enemy in findTargets(root.Position, direction, arc) do
 		DamageService.heroHitsEnemy(player, hero.stats, enemy, multipliers[step])

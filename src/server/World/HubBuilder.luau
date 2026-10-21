@@ -227,6 +227,13 @@ end
 -- Тренировочная площадка (ТЗ 3.3): место, где можно бить манекен, не мешая другим.
 -- Стоит сбоку от площади, чтобы бой не загораживал путь к маяку и к вратам.
 local TRAINING_CENTER = Vector3.new(38, 0, 18)
+local TRAINING_POST_HEIGHT = 5
+local TRAINING_POST_OFFSETS = {
+	Vector3.new(-11, 0, -11),
+	Vector3.new(11, 0, -11),
+	Vector3.new(-11, 0, 11),
+	Vector3.new(11, 0, 11),
+}
 
 local function buildTrainingGround(parent: Folder)
 	local floor =
@@ -234,17 +241,25 @@ local function buildTrainingGround(parent: Folder)
 	floor.Color = Palette.Path
 	floor.Material = Enum.Material.Ground
 
-	for _, offset in
-		{ Vector3.new(-11, 0, -11), Vector3.new(11, 0, -11), Vector3.new(-11, 0, 11), Vector3.new(11, 0, 11) }
-	do
+	for _, offset in TRAINING_POST_OFFSETS do
 		Geometry.part({
 			name = "TrainingPost",
-			size = Vector3.new(1.2, 5, 1.2),
-			cframe = CFrame.new(TRAINING_CENTER + offset + Vector3.new(0, y(2.5), 0)),
+			size = Vector3.new(1.2, TRAINING_POST_HEIGHT, 1.2),
+			cframe = CFrame.new(TRAINING_CENTER + offset + Vector3.new(0, y(TRAINING_POST_HEIGHT / 2), 0)),
 			color = Palette.Crate,
 			material = Enum.Material.WoodPlanks,
 			parent = parent,
 		})
+		-- На двух ближних к площади столбах — огонь. Застава освещена как вечер, и с места
+		-- появления площадка была неразличимым тёмным силуэтом: новичок, которому сказано
+		-- «подойди к манекену», её просто не находил (проверка C1 от 21.10.2026).
+		if offset.Z > 0 then
+			buildBrazier(
+				parent,
+				"TrainingBrazier",
+				TRAINING_CENTER + offset + Vector3.new(0, y(TRAINING_POST_HEIGHT), 0)
+			)
+		end
 	end
 end
 

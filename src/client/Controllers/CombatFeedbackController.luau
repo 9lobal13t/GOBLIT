@@ -132,7 +132,7 @@ local function attachHealthBar(model: Model)
 	local back = Ui.new("Frame", {
 		Name = "Bar",
 		AnchorPoint = Vector2.new(0.5, 1),
-		Position = UDim2.new(0.5, 0, 1, 0),
+		Position = UDim2.fromScale(0.5, 1),
 		Size = UDim2.fromOffset(BAR_WIDTH, BAR_HEIGHT),
 		BackgroundColor3 = Theme.Colors.HealthBack,
 		BorderSizePixel = 0,
