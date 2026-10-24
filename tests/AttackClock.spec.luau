@@ -1,6 +1,7 @@
 local Test = require("./lib/Test")
 local AttackClock = require("../src/shared/Logic/AttackClock")
 local Config = require("../src/shared/Config")
+local Remotes = require("../src/shared/Net/Remotes")
 
 local expect = Test.expect
 
@@ -154,6 +155,116 @@ Test.describe("AttackClock.decide", function(it)
 		-- Иначе один спам-залп давал бы сразу несколько ударов.
 		expect(Config.Weapon.TimingTolerance).toBeLessThan(Config.Weapon.AttackInterval)
 		expect(Config.Weapon.TimingTolerance).toBeGreaterThanOrEqual(0)
+	end)
+end)
+
+local CATCH_UP = 0.05
+
+-- Детерминированный «шум»: ожидание кадра на клиенте (0–33 мс) и разброс задержки сети.
+local function frameDelay(k: number): number
+	return (k * 13 % 7) / 6 * 0.033
+end
+local function networkJitter(k: number): number
+	return (k * 37 % 11) / 10 * 0.09
+end
+
+-- Честный клиент держит кнопку: шлёт запрос, как только наступил его срок (плюс ожидание
+-- кадра). Пакет идёт до сервера latency + разброс, сервер решает по своему расписанию.
+-- Возвращает число отправленных запросов, принятых сервером и время от первого до последнего.
+local function holdButton(count: number, latency: number): (number, number, number)
+	local clientReady = 0
+	local serverReady = 0
+	local sendAt = 0
+	local firstSend = 0
+	local accepted = 0
+	for k = 1, count do
+		if k == 1 then
+			firstSend = sendAt
+		end
+		clientReady = AttackClock.nextRequest(clientReady, sendAt, INTERVAL, CATCH_UP)
+		local arrival = sendAt + latency + networkJitter(k)
+		local decision = AttackClock.decide(serverReady, arrival, INTERVAL, TOLERANCE)
+		serverReady = decision.readyAt
+		if decision.accepted then
+			accepted += 1
+		end
+		if k < count then
+			sendAt = clientReady + frameDelay(k)
+		end
+	end
+	return count, accepted, sendAt - firstSend
+end
+
+Test.describe("AttackClock.nextRequest", function(it)
+	it("первый удар: следующий запрос через перезарядку", function()
+		expect(AttackClock.nextRequest(0, 100, INTERVAL, CATCH_UP)).toBeCloseTo(100.42)
+	end)
+
+	it(
+		"ожидание кадра не копится: шаг считается от прошлого срока",
+		function()
+			-- Запрос ушёл на 30 мс позже срока — следующий срок всё равно через 0,42 от прошлого.
+			expect(AttackClock.nextRequest(10, 10.03, INTERVAL, CATCH_UP)).toBeCloseTo(10.42)
+		end
+	)
+
+	it("после паузы простой не запасается впрок", function()
+		expect(AttackClock.nextRequest(10, 15, INTERVAL, CATCH_UP)).toBeCloseTo(15.42)
+		-- Опоздание чуть больше catchUp — тоже отсчёт от момента отправки.
+		expect(AttackClock.nextRequest(10, 10.06, INTERVAL, CATCH_UP)).toBeCloseTo(10.48)
+	end)
+
+	it(
+		"удержание кнопки держит темп перезарядки, хотя каждый запрос ждёт кадр",
+		function()
+			local sent, _, span = holdButton(100, 0.05)
+			-- 99 промежутков по 0,42 с; ожидание кадра добавляет не больше одного кадра на всю серию.
+			expect(span / (sent - 1)).toBeCloseTo(INTERVAL, 0.001)
+		end
+	)
+
+	it(
+		"сервер принимает все запросы честного клиента при любой задержке сети",
+		function()
+			for _, latency in { 0.02, 0.1, 0.25, 0.5 } do
+				local sent, accepted = holdButton(100, latency)
+				expect(accepted).toBe(sent)
+			end
+		end
+	)
+
+	it("неправильный срок или запас не ускоряют удары", function()
+		expect(AttackClock.nextRequest(0 / 0, 100, INTERVAL, CATCH_UP)).toBeCloseTo(100.42)
+		expect(AttackClock.nextRequest(math.huge, 100, INTERVAL, CATCH_UP)).toBeCloseTo(100.42)
+		-- Отрицательный запас считается нулём: опоздание на 10 мс уже отсчёт от момента отправки.
+		expect(AttackClock.nextRequest(10, 10.01, INTERVAL, -1)).toBeCloseTo(10.43)
+		-- Запрос раньше срока (так не должно быть) — отсчёт от момента отправки.
+		expect(AttackClock.nextRequest(10, 9.9, INTERVAL, CATCH_UP)).toBeCloseTo(10.32)
+	end)
+
+	it("неправильные перезарядка и время — ошибка", function()
+		expect(function()
+			AttackClock.nextRequest(0, 100, 0, CATCH_UP)
+		end).toThrow("interval")
+		expect(function()
+			AttackClock.nextRequest(0, 0 / 0, INTERVAL, CATCH_UP)
+		end).toThrow("now")
+	end)
+
+	it("на числах игры клиентский запас меньше серверного", function()
+		-- Иначе запрос, догоняющий расписание, приходил бы раньше, чем сервер готов принять.
+		expect(Config.Weapon.ClientCatchUp).toBeGreaterThanOrEqual(0)
+		expect(Config.Weapon.ClientCatchUp).toBeLessThan(Config.Weapon.TimingTolerance)
+	end)
+end)
+
+Test.describe("лимит частоты Attack", function(it)
+	it("не ниже предельной скорости атаки", function()
+		-- Иначе честного игрока с максимальной скоростью атаки отсекал бы антиспам.
+		local fastest = Config.Weapon.AttackInterval / Config.Hero.StatCaps.AttackSpeed.Max
+		local limit = Remotes.Attack.rateLimit
+		assert(limit, "у Attack должен быть лимит частоты")
+		expect(limit.perSecond).toBeGreaterThan(1 / fastest)
 	end)
 end)
 

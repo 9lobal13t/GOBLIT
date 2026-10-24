@@ -5,7 +5,8 @@
 -- урона — решает сервер (CLAUDE.md: «клиент просит — сервер решает»).
 --
 -- Перезарядку клиент тоже считает у себя, но лишь затем, чтобы не слать лишние запросы.
--- Настоящая перезарядка — на сервере, он присылает остаток в AttackPerformed.
+-- Настоящая перезарядка — на сервере. Клиент не ждёт его ответа, а держит ровный шаг сам
+-- (AttackClock.nextRequest): иначе к каждому удару прибавлялся бы пинг.
 --
 -- Удар можно держать: пока кнопка или клавиша нажата, запросы идут с частотой перезарядки
 -- и не чаще (ждём ровно до следующего разрешённого удара).
@@ -20,7 +21,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Constants = require(ReplicatedStorage.Shared.Constants)
+local AttackClock = require(ReplicatedStorage.Shared.Logic.AttackClock)
 local Remotes = require(ReplicatedStorage.Shared.Net.Remotes)
 local NetClient = require(ReplicatedStorage.Shared.Net.NetClient)
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
@@ -52,6 +55,9 @@ CombatController.Swung = Signal.new("Swung") :: Signal.Signal<>
 local player = Players.LocalPlayer
 local nextAttackAt = 0
 local holding = false
+-- Касание, которым держат экранную кнопку. Отпускание других пальцев (джойстик, камера)
+-- удержание не прерывает.
+local holdTouch: InputObject? = nil
 
 local function attackInterval(): number
 	local value = player:GetAttribute(Constants.PlayerAttr.AttackInterval)
@@ -86,8 +92,8 @@ local function requestAttack()
 		return
 	end
 
-	-- Предполагаемая перезарядка, чтобы не слать запросы впустую. Точную пришлёт сервер.
-	nextAttackAt = now + attackInterval()
+	-- Шаг от прошлого срока, а не от момента отправки: ожидание кадра не копится.
+	nextAttackAt = AttackClock.nextRequest(nextAttackAt, now, attackInterval(), Config.Weapon.ClientCatchUp)
 	NetClient.send(Remotes.Attack, direction)
 	CombatController.Swung:Fire()
 end
@@ -99,6 +105,7 @@ end
 
 local function stopHolding()
 	holding = false
+	holdTouch = nil
 end
 
 local function startHolding()
@@ -173,24 +180,33 @@ local function buildTouchButton(gui: ScreenGui)
 		button.Visible = Scale.isTouch()
 		if button.Visible then
 			placeButton(button, gui)
+		elseif holdTouch then
+			stopHolding()
 		end
 	end
 
-	-- Нажатие берём с самой кнопки, а отпускание — ещё и глобально: если палец уехал
-	-- с кнопки, InputEnded на ней может не прийти, и удары продолжались бы сами.
+	-- Нажатие берём с самой кнопки, а отпускание — глобально: если палец уехал с кнопки,
+	-- InputEnded на ней может не прийти, и удары продолжались бы сами. Отпускание
+	-- сравниваем с тем же касанием: InputObject касания один на всё время жизни пальца,
+	-- и снятый с джойстика палец не должен останавливать удары.
 	button.InputBegan:Connect(function(input: InputObject)
 		if
 			input.UserInputType == Enum.UserInputType.Touch
 			or input.UserInputType == Enum.UserInputType.MouseButton1
 		then
+			holdTouch = input
 			startHolding()
 		end
 	end)
 	UserInputService.InputEnded:Connect(function(input: InputObject)
-		if
-			input.UserInputType == Enum.UserInputType.Touch
-			or input.UserInputType == Enum.UserInputType.MouseButton1
-		then
+		local held = holdTouch
+		if not held then
+			return
+		end
+		-- Левая кнопка мыши одна, поэтому её сверяем по типу, а не по объекту.
+		local sameMouse = input.UserInputType == Enum.UserInputType.MouseButton1
+			and held.UserInputType == Enum.UserInputType.MouseButton1
+		if input == held or sameMouse then
 			stopHolding()
 		end
 	end)
@@ -223,12 +239,6 @@ function CombatController.init()
 	buildTouchButton(gui)
 end
 
-function CombatController.start()
-	NetClient.on(Remotes.AttackPerformed, function(cooldown: unknown)
-		if type(cooldown) == "number" and cooldown >= 0 then
-			nextAttackAt = os.clock() + cooldown
-		end
-	end)
-end
+function CombatController.start() end
 
 return CombatController

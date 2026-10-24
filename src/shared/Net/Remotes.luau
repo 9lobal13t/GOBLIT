@@ -60,10 +60,11 @@ local UpdateSetting = toServer("UpdateSetting", 5, 2)
 
 -- Attack(direction: Vector3) — намерение ударить в заданную сторону.
 -- Клиент присылает только направление: куда пришёлся удар, по кому и сколько урона,
--- решает сервер. Лимит с запасом над предельной скоростью атаки (2 удара/с при потолке
--- AttackSpeed = 2 и интервале 0,42 с); он защищает от потока пакетов, а скорость боя
--- задаёт расписание перезарядки на сервере (Logic/AttackClock).
-local Attack = toServer("Attack", 6, 4)
+-- решает сервер. Лимит с запасом над предельной скоростью атаки: при потолке
+-- AttackSpeed = 2 перезарядка 0,21 с, это 4,8 удара/с (тест в AttackClock.spec). Лимит
+-- защищает от потока пакетов, а скорость боя задаёт расписание перезарядки на сервере
+-- (Logic/AttackClock).
+local Attack = toServer("Attack", 6, 6)
 
 -- Сервер → клиент -------------------------------------------------------------------------
 
@@ -74,18 +75,11 @@ local Notify = toClient("Notify", false)
 -- Ненадёжное событие: это украшение, и потерянный пакет не должен задерживать остальные.
 local Hit = toClient("Hit", true)
 
--- AttackPerformed(cooldown: number) — сервер принял удар и начал перезарядку.
--- Передаётся остаток в секундах до следующего разрешённого удара по расписанию сервера
--- (не полная перезарядка: удар мог быть принят чуть раньше срока). Клиент по этому
--- проигрывает замах и знает, когда можно бить снова.
-local AttackPerformed = toClient("AttackPerformed", false)
-
 return table.freeze({
 	UpdateSetting = UpdateSetting,
 	Attack = Attack,
 	Notify = Notify,
 	Hit = Hit,
-	AttackPerformed = AttackPerformed,
 
-	All = table.freeze({ UpdateSetting, Attack, Notify, Hit, AttackPerformed }),
+	All = table.freeze({ UpdateSetting, Attack, Notify, Hit }),
 })

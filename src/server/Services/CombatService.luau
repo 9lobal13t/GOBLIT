@@ -129,9 +129,6 @@ local function onAttack(player: Player, rawDirection: unknown)
 
 	local isFinisher = step == #multipliers
 	local arc = if isFinisher then Config.Weapon.FinisherArcDegrees else Config.Weapon.ArcDegrees
-	-- Клиенту отправляется остаток до следующего срока, а не полная перезарядка: тогда его
-	-- предсказание совпадает с расписанием сервера и честные запросы не отбрасываются.
-	NetServer.fireClient(Remotes.AttackPerformed, player, math.max(decision.readyAt - now, 0))
 
 	for _, enemy in findTargets(root.Position, direction, arc) do
 		DamageService.heroHitsEnemy(player, hero.stats, enemy, multipliers[step])

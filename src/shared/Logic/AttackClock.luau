@@ -68,4 +68,34 @@ function AttackClock.decide(readyAt: number, now: number, interval: number, tole
 	return { accepted = true, readyAt = math.max(now, schedule) + interval }
 end
 
+-- Расписание на стороне клиента: когда отправить следующий запрос на удар.
+--
+-- Клиент не ждёт подтверждения сервера, а держит ровный шаг interval сам. Раньше срок
+-- следующего удара ставился по приходу ответа сервера, и к каждому удару добавлялось время
+-- пути пакета туда и обратно: в Studio 50 мс, на живом сервере 100–250 мс. Честный игрок,
+-- держащий кнопку, бил на 10–35 % реже, чем тот, кто шлёт запросы без остановки (проверка
+-- C3/C14 от 24.10.2026). Серверу ровный шаг клиента подходит: опоздания пакетов покрывает
+-- запас TimingTolerance в decide.
+--
+-- Шаг отсчитывается от прошлого срока, если запрос ушёл позже него не больше чем на catchUp
+-- (ожидание кадра: task.wait просыпается на ближайшем кадре, и иначе опоздания копились бы).
+-- Если позже — игрок отпускал кнопку, и простой не запасается впрок: отсчёт от now.
+-- catchUp должен быть меньше запаса сервера, иначе догоняющий запрос сервер отбросит.
+--
+-- readyAt — срок из прошлого вызова (для первого удара — 0), now — время отправки запроса.
+-- Вызывается только когда запрос действительно уходит (now >= readyAt).
+function AttackClock.nextRequest(readyAt: number, now: number, interval: number, catchUp: number): number
+	if not isFinite(now) then
+		error("AttackClock.nextRequest: now должно быть конечным числом")
+	end
+	if not isFinite(interval) or interval <= 0 then
+		error(
+			"AttackClock.nextRequest: interval должен быть конечным положительным числом"
+		)
+	end
+	local slack = if isFinite(catchUp) and catchUp > 0 then catchUp else 0
+	local onSchedule = isFinite(readyAt) and now >= readyAt and now - readyAt <= slack
+	return (if onSchedule then readyAt else now) + interval
+end
+
 return table.freeze(AttackClock)
