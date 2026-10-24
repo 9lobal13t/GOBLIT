@@ -1,5 +1,5 @@
 --!strict
--- Основной HUD (ТЗ 20.1). Фаза 1: здоровье, выносливость, уровень, текущая зона,
+-- Основной HUD (ТЗ 20.1): здоровье, выносливость, уровень и опыт, текущая зона,
 -- валюты профиля и предупреждение об отключённом сохранении.
 -- Все значения берутся из атрибутов игрока, которые выставляет сервер; HUD ничего
 -- не считает сам и не может показать то, чего нет на сервере.
@@ -9,7 +9,7 @@
 --   • сверху по центру — название зоны (показывается при входе и исчезает) и плашка
 --     сохранения, под ними уведомления;
 --   • слева посередине — валюты; справа сверху — кнопка настроек (SettingsController);
---   • внизу по центру — здоровье и выносливость; при сенсорном вводе панель сужается,
+--   • внизу по центру — уровень, здоровье, выносливость и опыт; при сенсорном вводе панель сужается,
 --     чтобы не заходить на джойстик и кнопку прыжка.
 
 local Players = game:GetService("Players")
@@ -169,15 +169,19 @@ local function buildVitals(gui: ScreenGui)
 		BackgroundTransparency = 1,
 		Parent = panel,
 	}, {
-		Ui.list(Enum.FillDirection.Vertical, 6, { VerticalAlignment = Enum.VerticalAlignment.Center }),
+		Ui.list(Enum.FillDirection.Vertical, 4, { VerticalAlignment = Enum.VerticalAlignment.Center }),
 	}) :: Frame
 
 	local health = createBar("Health", 22, Theme.Colors.Health, Theme.Colors.HealthBack, true)
 	health.frame.LayoutOrder = 1
 	health.frame.Parent = bars
-	local stamina = createBar("Stamina", 8, Theme.Colors.Stamina, Theme.Colors.StaminaBack, false)
+	local stamina = createBar("Stamina", 6, Theme.Colors.Stamina, Theme.Colors.StaminaBack, false)
 	stamina.frame.LayoutOrder = 2
 	stamina.frame.Parent = bars
+	-- Опыт — тонкая полоса цвета уровня: 22 + 4 + 6 + 4 + 4 = 40 точек, панель не растёт.
+	local xp = createBar("Xp", 4, Theme.Colors.Accent, Theme.Colors.StaminaBack, false)
+	xp.frame.LayoutOrder = 3
+	xp.frame.Parent = bars
 
 	onAttributes({ Attr.Health, Attr.MaxHealth }, function()
 		setBar(health, numberAttr(Attr.Health, 0), numberAttr(Attr.MaxHealth, 1))
@@ -187,6 +191,15 @@ local function buildVitals(gui: ScreenGui)
 	end)
 	onAttributes({ Attr.Level }, function()
 		levelLabel.Text = tostring(numberAttr(Attr.Level, 1))
+	end)
+	onAttributes({ Attr.Xp, Attr.XpToNext }, function()
+		local need = numberAttr(Attr.XpToNext, 0)
+		-- На максимальном уровне расти некуда: полоса полная.
+		if need <= 0 then
+			setBar(xp, 1, 1)
+		else
+			setBar(xp, numberAttr(Attr.Xp, 0), need)
+		end
 	end)
 end
 

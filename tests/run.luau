@@ -15,6 +15,7 @@ require("./Damage.spec")
 require("./Definitions.spec")
 require("./AttackClock.spec")
 require("./EnemyBrain.spec")
+require("./Leveling.spec")
 
 local _, failed = Test.run()
 process.exit(if failed > 0 then 1 else 0)

@@ -5,9 +5,9 @@
 -- Здоровье и выносливость хранит сервер, а не Humanoid, и реплицирует их атрибутами
 -- игрока (их читают HUD и, позже, панель группы).
 --
--- Характеристики (hero.stats) считает Logic/Stats из базовых значений и модификаторов.
--- Модификаторов пока нет: перки подключатся в фазе 2б, и тогда пересчёт пойдёт через
--- ту же функцию refreshStats.
+-- Характеристики (hero.stats) считает Logic/Stats из базовых значений и модификаторов:
+-- прибавок за уровень (Logic/Leveling) и перков. Любое изменение набора идёт через
+-- refreshStats.
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Config = require(ReplicatedStorage.Shared.Config)
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local Stats = require(ReplicatedStorage.Shared.Logic.Stats)
+local Leveling = require(ReplicatedStorage.Shared.Logic.Leveling)
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
 local ErrorReporter = require(ReplicatedStorage.Shared.Util.ErrorReporter)
 
@@ -27,7 +28,8 @@ export type Hero = {
 	stamina: number,
 	maxStamina: number,
 	level: number,
-	modifiers: { Stats.Modifier },
+	xp: number, -- накоплено на текущем уровне
+	modifiers: { Stats.Modifier }, -- перки и предметы; прибавки за уровень считаются отдельно
 	stats: { [string]: number },
 }
 
@@ -40,6 +42,8 @@ local HeroService = {}
 HeroService.CharacterReady = Signal.new("CharacterReady") :: Signal.Signal<Hero, Model>
 -- (hero) — герой погиб.
 HeroService.Died = Signal.new("HeroDied") :: Signal.Signal<Hero>
+-- (hero, gained) — герой получил gained уровней (за одно начисление их может быть несколько).
+HeroService.LeveledUp = Signal.new("HeroLeveledUp") :: Signal.Signal<Hero, number>
 
 local heroes: { [Player]: Hero } = {}
 
@@ -52,9 +56,17 @@ local function replicate(hero: Hero)
 	player:SetAttribute(Attr.Stamina, hero.stamina)
 	player:SetAttribute(Attr.MaxStamina, hero.maxStamina)
 	player:SetAttribute(Attr.Level, hero.level)
+	player:SetAttribute(Attr.Xp, hero.xp)
+	player:SetAttribute(Attr.XpToNext, Leveling.xpToNext(hero.level, Config.Progression))
 	player:SetAttribute(Attr.AttackPower, hero.stats.AttackPower)
 	player:SetAttribute(Attr.AttackInterval, Stats.attackInterval(Config.Weapon.AttackInterval, hero.stats.AttackSpeed))
 	player:SetAttribute(Attr.DodgeCooldown, hero.stats.DodgeCooldown)
+end
+
+local function computeStats(level: number, modifiers: { Stats.Modifier }): { [string]: number }
+	local all: { Stats.Modifier } = Leveling.modifiers(level, Config.Progression)
+	table.move(modifiers, 1, #modifiers, #all + 1, all)
+	return Stats.compute(Config.Hero.BaseStats, all, Config.Hero.StatCaps)
 end
 
 -- Пересчитывает характеристики по базе и модификаторам. Вызывается при изменении
@@ -64,7 +76,7 @@ local function refreshStats(hero: Hero)
 	local healthFraction = if hero.maxHealth > 0 then hero.health / hero.maxHealth else 1
 	local staminaFraction = if hero.maxStamina > 0 then hero.stamina / hero.maxStamina else 1
 
-	hero.stats = Stats.compute(Config.Hero.BaseStats, hero.modifiers, Config.Hero.StatCaps)
+	hero.stats = computeStats(hero.level, hero.modifiers)
 	hero.maxHealth = hero.stats.MaxHealth
 	hero.maxStamina = hero.stats.MaxStamina
 	hero.health = math.clamp(math.floor(hero.maxHealth * healthFraction + 0.5), 1, hero.maxHealth)
@@ -79,7 +91,7 @@ local function refreshStats(hero: Hero)
 end
 
 local function newHero(player: Player): Hero
-	local stats = Stats.compute(Config.Hero.BaseStats, {}, Config.Hero.StatCaps)
+	local stats = computeStats(1, {})
 	return {
 		player = player,
 		zone = Constants.HubZone,
@@ -89,6 +101,7 @@ local function newHero(player: Player): Hero
 		stamina = stats.MaxStamina,
 		maxStamina = stats.MaxStamina,
 		level = 1,
+		xp = 0,
 		modifiers = {},
 		stats = stats,
 	}
@@ -196,6 +209,30 @@ function HeroService.applyDamage(player: Player, amount: number): number
 		humanoid.Health = 0
 	end
 	return dealt
+end
+
+-- Начисляет герою опыт (решает сервер: за убийства, позже — за комнаты и задания).
+-- На новом уровне растут характеристики и герой немного лечится (LevelUpHealFraction).
+function HeroService.addXp(player: Player, amount: number)
+	local hero = heroes[player]
+	if not hero then
+		return
+	end
+	local result = Leveling.addXp(hero.level, hero.xp, amount, Config.Progression)
+	hero.xp = result.xp
+	if result.gained <= 0 then
+		replicate(hero)
+		return
+	end
+
+	hero.level = result.level
+	refreshStats(hero)
+	if hero.state == Constants.HeroState.Alive then
+		local heal = math.floor(hero.maxHealth * Config.Progression.LevelUpHealFraction)
+		hero.health = math.min(hero.maxHealth, hero.health + heal)
+	end
+	replicate(hero)
+	HeroService.LeveledUp:Fire(hero, result.gained)
 end
 
 -- Добавляет герою модификаторы характеристик (перк, предмет) и пересчитывает их.
