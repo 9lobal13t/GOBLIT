@@ -12,6 +12,7 @@ local Damage = require(ReplicatedStorage.Shared.Logic.Damage)
 local Remotes = require(ReplicatedStorage.Shared.Net.Remotes)
 local NetServer = require(script.Parent.Parent.Net.NetServer)
 local EnemyService = require(script.Parent.EnemyService)
+local HeroService = require(script.Parent.HeroService)
 
 export type HeroStats = {
 	AttackPower: number,
@@ -52,9 +53,42 @@ function DamageService.heroHitsEnemy(
 		position = enemy.root.Position,
 		amount = result.amount,
 		crit = result.crit,
+		taken = false,
 	}
 	NetServer.fireClient(Remotes.Hit, player, payload)
 	return result.amount, result.crit
+end
+
+-- Урон врага по герою. Враги не критуют; броня героя — из его характеристик (перки).
+-- Возвращает, сколько здоровья снято.
+function DamageService.enemyHitsHero(enemy: EnemyService.Enemy, player: Player): number
+	local hero = HeroService.get(player)
+	local root = HeroService.getRootPart(player)
+	if not hero or not root then
+		return 0
+	end
+	local eliteDef = enemy.def.elite
+	local result = Damage.compute({
+		attackPower = enemy.def.damage * (if enemy.elite and eliteDef then eliteDef.damageMult else 1),
+		abilityMultiplier = 1,
+		critChance = 0,
+		critDamage = 1,
+		armor = hero.stats.Armor,
+		roll = rng:NextNumber(),
+	}, Config.Damage)
+
+	local dealt = HeroService.applyDamage(player, result.amount)
+	if dealt <= 0 then
+		return 0
+	end
+	local payload: Remotes.HitPayload = {
+		position = root.Position,
+		amount = dealt,
+		crit = false,
+		taken = true,
+	}
+	NetServer.fireClient(Remotes.Hit, player, payload)
+	return dealt
 end
 
 function DamageService.init() end

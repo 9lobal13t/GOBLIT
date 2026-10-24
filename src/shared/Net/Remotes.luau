@@ -32,6 +32,7 @@ export type HitPayload = {
 	position: Vector3,
 	amount: number,
 	crit: boolean,
+	taken: boolean, -- true — урон получил сам игрок (красная цифра над героем)
 }
 
 local function toServer(name: string, burst: number, perSecond: number): RemoteDef
@@ -71,7 +72,7 @@ local Attack = toServer("Attack", 6, 6)
 -- Notify(payload: NotifyPayload) — всплывающее уведомление.
 local Notify = toClient("Notify", false)
 
--- Hit(payload: HitPayload) — попадание по цели: цифры урона у атаковавшего.
+-- Hit(payload: HitPayload) — попадание: цифры урона у атаковавшего и у раненого игрока.
 -- Ненадёжное событие: это украшение, и потерянный пакет не должен задерживать остальные.
 local Hit = toClient("Hit", true)
 

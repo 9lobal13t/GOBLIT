@@ -25,6 +25,7 @@ local services: { { name: string, module: Service } } = {
 	{ name = "EnemyService", module = require(script.Services.EnemyService) :: any },
 	{ name = "DamageService", module = require(script.Services.DamageService) :: any },
 	{ name = "CombatService", module = require(script.Services.CombatService) :: any },
+	{ name = "EnemyAiService", module = require(script.Services.EnemyAiService) :: any },
 	{ name = "HubService", module = require(script.Services.HubService) :: any },
 	-- После HubService: персонажи появляются только когда Застава построена.
 	{ name = "SpawnService", module = require(script.Services.SpawnService) :: any },

@@ -38,6 +38,8 @@ local HeroService = {}
 
 -- (hero, character) — персонаж героя появился и настроен.
 HeroService.CharacterReady = Signal.new("CharacterReady") :: Signal.Signal<Hero, Model>
+-- (hero) — герой погиб.
+HeroService.Died = Signal.new("HeroDied") :: Signal.Signal<Hero>
 
 local heroes: { [Player]: Hero } = {}
 
@@ -92,6 +94,18 @@ local function newHero(player: Player): Hero
 	}
 end
 
+-- Герой погиб: от удара (здоровье на сервере дошло до нуля) или иначе (персонаж упал
+-- с карты). Персонажа пересоздаёт SpawnService, здоровье возвращается в setupCharacter.
+local function markDead(hero: Hero)
+	if hero.state == Constants.HeroState.Dead then
+		return
+	end
+	hero.state = Constants.HeroState.Dead
+	hero.health = 0
+	replicate(hero)
+	HeroService.Died:Fire(hero)
+end
+
 local function setupCharacter(hero: Hero, character: Model)
 	local found = character:FindFirstChildOfClass("Humanoid")
 		or character:WaitForChild("Humanoid", HUMANOID_WAIT_SECONDS)
@@ -100,6 +114,20 @@ local function setupCharacter(hero: Hero, character: Model)
 		return
 	end
 	local humanoid = found
+
+	-- Новый персонаж после смерти. Пока смерть бывает только на Заставе, герой
+	-- возвращается с полным здоровьем; правила смерти в экспедиции — фаза 4.
+	if hero.state == Constants.HeroState.Dead then
+		hero.state = Constants.HeroState.Alive
+		hero.health = hero.maxHealth
+		hero.stamina = hero.maxStamina
+		replicate(hero)
+	end
+	humanoid.Died:Once(function()
+		if hero.player.Character == character then
+			markDead(hero)
+		end
+	end)
 
 	humanoid.WalkSpeed = hero.stats.MoveSpeed
 	humanoid.UseJumpPower = false
@@ -144,6 +172,30 @@ end
 function HeroService.distanceTo(player: Player, position: Vector3): number
 	local root = HeroService.getRootPart(player)
 	return if root then (root.Position - position).Magnitude else math.huge
+end
+
+-- Снимает герою здоровье. Вызывает только DamageService: там считается сам урон.
+-- Возвращает, сколько здоровья снято (0, если герой уже не жив).
+function HeroService.applyDamage(player: Player, amount: number): number
+	local hero = heroes[player]
+	if not hero or hero.state ~= Constants.HeroState.Alive or not (amount > 0) then
+		return 0
+	end
+	local dealt = math.min(amount, hero.health)
+	hero.health -= dealt
+	if hero.health > 0 then
+		replicate(hero)
+		return dealt
+	end
+
+	markDead(hero)
+	-- Персонаж падает вместе с героем: так SpawnService его пересоздаст.
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.Health = 0
+	end
+	return dealt
 end
 
 -- Добавляет герою модификаторы характеристик (перк, предмет) и пересчитывает их.

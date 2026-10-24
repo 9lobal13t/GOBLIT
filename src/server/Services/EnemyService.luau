@@ -4,11 +4,12 @@
 -- Здоровье хранит сервер и реплицирует атрибутами модели (их читает полоска здоровья
 -- на клиенте). Клиент не может ни создать врага, ни изменить его здоровье.
 --
--- Фаза 2а: тренировочный манекен на Заставе. Поведение и AI добавятся в фазе 2б,
--- поэтому здесь нет ни движения, ни атак — только цель, по которой можно бить.
+-- Здесь только тело врага: появление, здоровье, смерть. Поведение подвижных врагов
+-- (преследование, замах, удар) ведёт EnemyAiService.
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Config = require(ReplicatedStorage.Shared.Config)
 local Constants = require(ReplicatedStorage.Shared.Constants)
 local Enemies = require(ReplicatedStorage.Shared.Definitions.Enemies)
 local Signal = require(ReplicatedStorage.Shared.Util.Signal)
@@ -23,6 +24,7 @@ export type Enemy = {
 	elite: boolean,
 	model: Model,
 	root: BasePart,
+	humanoid: Humanoid?, -- только у подвижных врагов
 	health: number,
 	maxHealth: number,
 	dead: boolean,
@@ -64,6 +66,7 @@ function EnemyService.spawn(defId: string, elite: boolean, position: Vector3, fo
 		elite = isElite,
 		model = built.model,
 		root = built.root,
+		humanoid = built.humanoid,
 		health = maxHealth,
 		maxHealth = maxHealth,
 		dead = false,
@@ -73,6 +76,11 @@ function EnemyService.spawn(defId: string, elite: boolean, position: Vector3, fo
 	all[enemy.id] = enemy
 	replicate(enemy)
 	built.model.Parent = parent
+	if not built.root.Anchored then
+		-- Физикой врага управляет только сервер. Иначе Roblox отдал бы её ближайшему игроку,
+		-- и его клиент мог бы двигать врага куда угодно.
+		built.root:SetNetworkOwner(nil)
+	end
 	return enemy
 end
 
@@ -99,7 +107,7 @@ function EnemyService.getAll(): { Enemy }
 end
 
 local function removeAfterDelay(enemy: Enemy)
-	task.delay(1.2, function()
+	task.delay(Config.Enemies.CorpseSeconds, function()
 		byRoot[enemy.root] = nil
 		all[enemy.id] = nil
 		enemy.model:Destroy()
@@ -128,6 +136,8 @@ function EnemyService.applyDamage(enemy: Enemy, amount: number, attacker: Player
 
 	if enemy.health <= 0 then
 		enemy.dead = true
+		-- Тело замирает на месте до исчезновения.
+		enemy.root.Anchored = true
 		enemy.model:SetAttribute(Attr.State, Constants.EnemyState.Dead)
 		EnemyService.Died:Fire(enemy, attacker)
 		removeAfterDelay(enemy)

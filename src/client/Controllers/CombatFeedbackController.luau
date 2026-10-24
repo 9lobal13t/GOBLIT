@@ -1,5 +1,5 @@
 --!strict
--- Что игрок видит в бою: цифры урона и полоски здоровья врагов (ТЗ 20.2).
+-- Что игрок видит в бою: цифры урона, полоски здоровья врагов и их замах (ТЗ 20.2).
 --
 -- Полоски берут здоровье из атрибутов модели врага, которые выставляет сервер, поэтому
 -- показать больше, чем есть на сервере, клиент не может. Полоска появляется у врага,
@@ -28,6 +28,10 @@ local BAR_WIDTH = 120
 local BAR_HEIGHT = 10
 local BAR_RANGE = 90
 local BAR_HIDE_DELAY = 5
+-- Подсветка врага, пока он замахивается (телеграф удара): по ней игрок понимает,
+-- что пора отойти. Highlight рисуется поверх модели без своих деталей.
+local TELEGRAPH_FILL = Color3.fromHex("#ff3b3b")
+local TELEGRAPH_FILL_TRANSPARENCY = 0.35
 
 local CombatFeedbackController = {}
 
@@ -36,7 +40,8 @@ local activeNumbers = 0
 
 -- Цифры урона ------------------------------------------------------------------------
 
-local function spawnNumber(position: Vector3, amount: number, crit: boolean)
+-- taken — урон получил сам игрок: красная цифра над героем.
+local function spawnNumber(position: Vector3, amount: number, crit: boolean, taken: boolean)
 	local parent = numbersFolder
 	if not parent or activeNumbers >= MAX_NUMBERS then
 		return
@@ -66,7 +71,7 @@ local function spawnNumber(position: Vector3, amount: number, crit: boolean)
 		TextXAlignment = Enum.TextXAlignment.Center,
 		FontFace = Theme.Fonts.Heavy,
 		TextSize = if crit then Theme.TextSize.Big else Theme.TextSize.Title,
-		TextColor3 = if crit then Theme.Colors.Gold else Theme.Colors.Text,
+		TextColor3 = if taken then Theme.Colors.Health elseif crit then Theme.Colors.Gold else Theme.Colors.Text,
 		TextStrokeTransparency = 0.4,
 		Text = if crit then `{Ui.formatInt(amount)}!` else Ui.formatInt(amount),
 		Parent = gui,
@@ -95,7 +100,33 @@ local function onHit(payload: unknown)
 	if typeof(data.position) ~= "Vector3" or type(data.amount) ~= "number" then
 		return
 	end
-	spawnNumber(data.position :: Vector3, data.amount :: number, data.crit == true)
+	spawnNumber(data.position :: Vector3, data.amount :: number, data.crit == true, data.taken == true)
+end
+
+-- Телеграф удара ------------------------------------------------------------------------
+
+local function watchTelegraph(model: Model)
+	local highlight: Highlight? = nil
+	local function refresh()
+		local winding = model:GetAttribute(Attr.State) == Constants.EnemyState.Telegraph
+		if winding and not highlight then
+			highlight = Ui.new("Highlight", {
+				Name = "GoblitTelegraph",
+				Adornee = model,
+				FillColor = TELEGRAPH_FILL,
+				FillTransparency = TELEGRAPH_FILL_TRANSPARENCY,
+				OutlineColor = TELEGRAPH_FILL,
+				OutlineTransparency = 0,
+				DepthMode = Enum.HighlightDepthMode.Occluded,
+				Parent = model,
+			}) :: Highlight
+		elseif not winding and highlight then
+			highlight:Destroy()
+			highlight = nil
+		end
+	end
+	model:GetAttributeChangedSignal(Attr.State):Connect(refresh)
+	refresh()
 end
 
 -- Полоски здоровья врагов -------------------------------------------------------------
@@ -180,6 +211,11 @@ local function attachHealthBar(model: Model)
 	refresh()
 end
 
+local function watchEnemy(model: Model)
+	attachHealthBar(model)
+	watchTelegraph(model)
+end
+
 function CombatFeedbackController.init()
 	local folder = Workspace:FindFirstChild(Constants.Folders.Effects)
 	if not folder then
@@ -195,12 +231,12 @@ function CombatFeedbackController.start()
 
 	for _, model in CollectionService:GetTagged(Constants.Tags.Enemy) do
 		if model:IsA("Model") then
-			attachHealthBar(model)
+			watchEnemy(model)
 		end
 	end
 	CollectionService:GetInstanceAddedSignal(Constants.Tags.Enemy):Connect(function(instance)
 		if instance:IsA("Model") then
-			attachHealthBar(instance)
+			watchEnemy(instance)
 		end
 	end)
 end

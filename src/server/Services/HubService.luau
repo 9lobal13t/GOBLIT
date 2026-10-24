@@ -1,14 +1,20 @@
 --!strict
--- Застава: постройка хаба, освещение и тестовый интерактивный объект — маяк.
+-- Застава: постройка хаба, освещение, тестовый интерактивный объект — маяк, тренировочный
+-- манекен и загон с клеткой, из которой можно выпустить Шелуху.
 -- Маяк — общий для сервера объект: его состояние видят все игроки.
 -- Взаимодействие идёт через ProximityPrompt; сервер дополнительно проверяет дистанцию
 -- и ограничивает частоту, не доверяя одному лишь клиентскому срабатыванию.
 
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
+local Constants = require(ReplicatedStorage.Shared.Constants)
 
 local HeroService = require(script.Parent.HeroService)
 local EnemyService = require(script.Parent.EnemyService)
+local EnemyAiService = require(script.Parent.EnemyAiService)
 local NetServer = require(script.Parent.Parent.Net.NetServer)
 local HubBuilder = require(script.Parent.Parent.World.HubBuilder)
 local WorldFolders = require(script.Parent.Parent.World.WorldFolders)
@@ -22,6 +28,8 @@ local BEACON_PLAYER_COOLDOWN = 1.5
 local BEACON_GLOBAL_COOLDOWN = 0.5
 -- Запас над MaxActivationDistance подсказки: позиция персонажа на сервере отстаёт от клиента.
 local BEACON_MAX_DISTANCE = 16
+-- То же для клетки в загоне.
+local CAGE_MAX_DISTANCE = 16
 
 -- Освещение игры собирается кодом. Эффекты, оставшиеся в месте от шаблона Roblox,
 -- смешивались бы с нашими: в опубликованном месте нашлись Atmosphere, Bloom, SunRays,
@@ -47,6 +55,7 @@ local dummyLastHitAt = -math.huge
 local beaconLit = true
 local lastGlobalUse = -math.huge
 local lastPlayerUse: { [Player]: number } = {}
+local lastCageRelease = -math.huge
 
 local function ensureEffect(className: string, name: string): Instance
 	local existing = Lighting:FindFirstChild(name)
@@ -157,6 +166,40 @@ local function onBeaconTriggered(player: Player)
 	)
 end
 
+-- Выпустить Шелуху из клетки. Сервер сам проверяет, жив ли игрок, стоит ли рядом,
+-- не слишком ли часто нажимают и не переполнен ли загон.
+local function onCageTriggered(player: Player)
+	local hubRefs = refs
+	local hero = HeroService.get(player)
+	if not hubRefs or not hero or hero.state ~= Constants.HeroState.Alive then
+		return
+	end
+	local arena = hubRefs.arena
+	local now = os.clock()
+	if now - lastCageRelease < Config.Training.CageCooldownSeconds then
+		return
+	end
+	if HeroService.distanceTo(player, arena.cage.Position) > CAGE_MAX_DISTANCE then
+		NetServer.reject(player, "CagePrompt", "слишком далеко от клетки")
+		return
+	end
+	if EnemyAiService.countAt(arena.center) >= Config.Training.CageLimit then
+		NetServer.notify(
+			player,
+			"В загоне и так тесно. Сначала разберитесь с теми, кто уже вышел.",
+			"warning"
+		)
+		return
+	end
+
+	local enemy = EnemyService.spawn("husk", false, arena.release, arena.center.Y, WorldFolders.hub())
+	if not enemy then
+		return
+	end
+	lastCageRelease = now
+	EnemyAiService.activate(enemy, arena.center, Config.Training.ArenaRadius + Config.Enemies.LeashMargin)
+end
+
 -- Построена ли Застава (с точкой появления). Используется SpawnService.
 function HubService.isBuilt(): boolean
 	return refs ~= nil
@@ -196,6 +239,7 @@ function HubService.start()
 	assert(hubRefs, "Застава не построена")
 	spawnDummy(hubRefs)
 	hubRefs.beacon.prompt.Triggered:Connect(onBeaconTriggered)
+	hubRefs.arena.prompt.Triggered:Connect(onCageTriggered)
 	Players.PlayerRemoving:Connect(function(player)
 		lastPlayerUse[player] = nil
 	end)

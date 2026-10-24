@@ -167,6 +167,15 @@ local Config = {
 		PartyHealthScalePerPlayer = 0.4,
 		PartyBudgetPerPlayer = 0.6,
 		MaxPerRoom = 9,
+		-- На таком расстоянии от точки появления враг считается вернувшимся домой.
+		HomeTolerance = 2,
+	},
+
+	-- Загон на Заставе: в нём можно выпустить Шелуху и проверить бой, не уходя в подземелье.
+	Training = {
+		ArenaRadius = 14,
+		CageLimit = 3, -- сколько Шелух из клетки может быть в загоне одновременно
+		CageCooldownSeconds = 2,
 	},
 
 	Loot = {

@@ -7,6 +7,9 @@
 -- Система координат: верх пола на высоте FLOOR_TOP, точка появления на +Z,
 -- арка на −Z. Пол приподнят на 1 стад, чтобы не мерцать со стандартным Baseplate.
 
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local Config = require(ReplicatedStorage.Shared.Config)
 local Geometry = require(script.Parent.Geometry)
 
 export type BeaconRefs = {
@@ -16,10 +19,19 @@ export type BeaconRefs = {
 	prompt: ProximityPrompt,
 }
 
+-- Загон, где можно выпустить Шелуху из клетки.
+export type ArenaRefs = {
+	center: Vector3, -- центр на уровне пола: дом выпущенных врагов
+	release: Vector3, -- где враг появляется, выйдя из клетки
+	cage: BasePart, -- крыша клетки: на ней подсказка, от неё сервер меряет расстояние
+	prompt: ProximityPrompt,
+}
+
 export type HubRefs = {
 	spawn: SpawnLocation,
 	beacon: BeaconRefs,
 	trainingGround: Vector3, -- центр площадки для тренировочного манекена
+	arena: ArenaRefs,
 }
 
 local FLOOR_TOP = 1
@@ -263,6 +275,92 @@ local function buildTrainingGround(parent: Folder)
 	end
 end
 
+local ARENA_CENTER = Vector3.new(40, 0, -30)
+local ARENA_FENCE_POSTS = 12
+local ARENA_FENCE_HEIGHT = 2.5
+local CAGE_SIZE = Vector3.new(6, 5, 4)
+
+-- Клетка из прутьев. Она стоит на краю загона дверью к центру.
+local function buildCage(parent: Folder, base: Vector3, facing: Vector3): (BasePart, ProximityPrompt)
+	local frame = CFrame.lookAt(base, base + facing)
+	local roof = Geometry.part({
+		name = "CageRoof",
+		size = Vector3.new(CAGE_SIZE.X, 0.4, CAGE_SIZE.Z),
+		cframe = frame * CFrame.new(0, y(CAGE_SIZE.Y), 0),
+		color = Palette.Tower,
+		material = Enum.Material.CorrodedMetal,
+		parent = parent,
+	})
+	local barCount = 6
+	for side = -1, 1, 2 do
+		for i = 0, barCount - 1 do
+			local x = -CAGE_SIZE.X / 2 + 0.3 + i * (CAGE_SIZE.X - 0.6) / (barCount - 1)
+			Geometry.part({
+				name = "CageBar",
+				size = Vector3.new(0.25, CAGE_SIZE.Y, 0.25),
+				cframe = frame * CFrame.new(x, y(CAGE_SIZE.Y / 2), side * CAGE_SIZE.Z / 2),
+				color = Palette.Tower,
+				material = Enum.Material.CorrodedMetal,
+				parent = parent,
+			})
+		end
+	end
+
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ObjectText = "Клетка с шелухой"
+	prompt.ActionText = "Выпустить"
+	prompt.HoldDuration = 0.4
+	prompt.MaxActivationDistance = 10
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = roof
+	return roof, prompt
+end
+
+local function buildArena(parent: Folder): ArenaRefs
+	local radius = Config.Training.ArenaRadius
+	local floor =
+		Geometry.disc("ArenaFloor", Vector3.new(ARENA_CENTER.X, y(0.1), ARENA_CENTER.Z), radius * 2, 0.4, parent)
+	floor.Color = Palette.Path
+	floor.Material = Enum.Material.Ground
+
+	-- Низкие столбы по кругу: граница загона видна, а войти и выйти можно где угодно.
+	for i = 0, ARENA_FENCE_POSTS - 1 do
+		local angle = i / ARENA_FENCE_POSTS * math.pi * 2
+		local offset = Vector3.new(math.cos(angle), 0, math.sin(angle)) * (radius + 0.6)
+		Geometry.part({
+			name = "ArenaPost",
+			size = Vector3.new(0.9, ARENA_FENCE_HEIGHT, 0.9),
+			cframe = CFrame.new(ARENA_CENTER + offset + Vector3.new(0, y(ARENA_FENCE_HEIGHT / 2), 0)),
+			color = Palette.Crate,
+			material = Enum.Material.WoodPlanks,
+			parent = parent,
+		})
+	end
+
+	-- Клетка у дальнего от площади края, огни — по бокам от неё: загон виден в темноте.
+	local cageBase = ARENA_CENTER + Vector3.new(0, 0, -(radius - CAGE_SIZE.Z / 2 - 1))
+	local cage, prompt = buildCage(parent, cageBase, Vector3.new(0, 0, 1))
+	for _, side in { -1, 1 } do
+		local post = cageBase + Vector3.new(side * (CAGE_SIZE.X / 2 + 2), 0, 0)
+		Geometry.part({
+			name = "ArenaLightPost",
+			size = Vector3.new(1.2, TRAINING_POST_HEIGHT, 1.2),
+			cframe = CFrame.new(post + Vector3.new(0, y(TRAINING_POST_HEIGHT / 2), 0)),
+			color = Palette.Crate,
+			material = Enum.Material.WoodPlanks,
+			parent = parent,
+		})
+		buildBrazier(parent, "ArenaBrazier", post + Vector3.new(0, y(TRAINING_POST_HEIGHT), 0))
+	end
+
+	return {
+		center = Vector3.new(ARENA_CENTER.X, y(0.3), ARENA_CENTER.Z),
+		release = cageBase + Vector3.new(0, y(0.3), CAGE_SIZE.Z / 2 + 2.5),
+		cage = cage,
+		prompt = prompt,
+	}
+end
+
 local function buildSpawn(parent: Folder): SpawnLocation
 	local spawn = Instance.new("SpawnLocation")
 	spawn.Name = "OutpostSpawn"
@@ -336,12 +434,14 @@ function HubBuilder.build(parent: Folder): HubRefs
 	buildArch(parent)
 	buildCrates(parent)
 	buildTrainingGround(parent)
+	local arena = buildArena(parent)
 	local spawn = buildSpawn(parent)
 	local beacon = buildBeacon(parent)
 	return {
 		spawn = spawn,
 		beacon = beacon,
 		trainingGround = Vector3.new(TRAINING_CENTER.X, y(0), TRAINING_CENTER.Z),
+		arena = arena,
 	}
 end
 
